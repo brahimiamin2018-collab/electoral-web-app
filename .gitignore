@@ -1,0 +1,15 @@
+# Node dependencies (Ne pas envoyer sur GitHub)
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dist (Dossier compilé)
+# Optionnel: on conserve dist ou on laisse Render le builder
+dist/
+
+# OS Files
+.DS_Store
+Thumbs.db
