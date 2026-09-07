@@ -9,10 +9,13 @@
     "preview": "vite preview",
     "server": "node server.js",
     "start": "node server.js",
-    "migrate": "python migrate_access.py"
+    "migrate": "python migrate_access.py",
+    "migrate-cloud": "node migrate_to_supabase.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "lucide-react": "^0.378.0",
     "react": "^18.3.1",

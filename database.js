@@ -1,15 +1,33 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, 'electoral.db');
 
-const db = new sqlite3.Database(dbPath);
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Helper for Promisified Queries
-const query = (sql, params = []) => {
+const isCloudMode = !!(SUPABASE_URL && SUPABASE_KEY);
+
+let supabase = null;
+let db = null;
+
+if (isCloudMode) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log(`🌐 Mode Base de Données Cloud Activé (Supabase: ${SUPABASE_URL})`);
+} else {
+  db = new sqlite3.Database(dbPath);
+  console.log(`💾 Mode Base de Données Locale Activé (SQLite: ${dbPath})`);
+}
+
+// Helpers for Promisified Local SQLite Queries
+const queryLocal = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => {
       if (err) reject(err);
@@ -18,7 +36,7 @@ const query = (sql, params = []) => {
   });
 };
 
-const get = (sql, params = []) => {
+const getLocal = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => {
       if (err) reject(err);
@@ -27,7 +45,7 @@ const get = (sql, params = []) => {
   });
 };
 
-const run = (sql, params = []) => {
+const runLocal = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
       if (err) reject(err);
@@ -37,7 +55,9 @@ const run = (sql, params = []) => {
 };
 
 export async function initDb() {
-  await run(`
+  if (isCloudMode) return;
+
+  await runLocal(`
     CREATE TABLE IF NOT EXISTS BDD_MERE (
       NUM_ORDRE TEXT,
       CIN TEXT PRIMARY KEY,
@@ -54,7 +74,7 @@ export async function initDb() {
     );
   `);
 
-  await run(`
+  await runLocal(`
     CREATE TABLE IF NOT EXISTS AFFECTATIONS_ENCADRANTS (
       CIN TEXT PRIMARY KEY,
       NUM_ORDRE TEXT,
@@ -71,31 +91,60 @@ export async function initDb() {
   `);
 
   try {
-    await run(`ALTER TABLE AFFECTATIONS_ENCADRANTS ADD COLUMN TEL_ELECTEUR TEXT`);
-  } catch (e) {
-    // Column already exists
-  }
+    await runLocal(`ALTER TABLE AFFECTATIONS_ENCADRANTS ADD COLUMN TEL_ELECTEUR TEXT`);
+  } catch (e) {}
 
-  await run(`
+  await runLocal(`
     CREATE TABLE IF NOT EXISTS LISTE_ENCADRANTS (
       NomEncadrant TEXT PRIMARY KEY,
       TEL_ENCADRANT TEXT
     );
   `);
 
-  await run(`CREATE INDEX IF NOT EXISTS idx_bdd_cin ON BDD_MERE(CIN);`);
-  await run(`CREATE INDEX IF NOT EXISTS idx_bdd_nom_prenom ON BDD_MERE(NOM, PRENOM);`);
-  await run(`CREATE INDEX IF NOT EXISTS idx_bdd_commune ON BDD_MERE(COMMUNE);`);
-  await run(`CREATE INDEX IF NOT EXISTS idx_bdd_bureau ON BDD_MERE(LIEU_BUREAU_VOTE);`);
-  await run(`CREATE INDEX IF NOT EXISTS idx_aff_encadrant ON AFFECTATIONS_ENCADRANTS(ENCADRANT);`);
+  await runLocal(`CREATE INDEX IF NOT EXISTS idx_bdd_cin ON BDD_MERE(CIN);`);
+  await runLocal(`CREATE INDEX IF NOT EXISTS idx_bdd_nom_prenom ON BDD_MERE(NOM, PRENOM);`);
+  await runLocal(`CREATE INDEX IF NOT EXISTS idx_bdd_commune ON BDD_MERE(COMMUNE);`);
+  await runLocal(`CREATE INDEX IF NOT EXISTS idx_bdd_bureau ON BDD_MERE(LIEU_BUREAU_VOTE);`);
+  await runLocal(`CREATE INDEX IF NOT EXISTS idx_aff_encadrant ON AFFECTATIONS_ENCADRANTS(ENCADRANT);`);
 }
 
 export async function getStats() {
-  const totalVotersRow = await get(`SELECT COUNT(*) as count FROM BDD_MERE`);
-  const totalAssignmentsRow = await get(`SELECT COUNT(*) as count FROM AFFECTATIONS_ENCADRANTS`);
-  const totalEncadrantsRow = await get(`SELECT COUNT(*) as count FROM LISTE_ENCADRANTS`);
+  if (isCloudMode) {
+    const { count: totalVoters } = await supabase.from('bdd_mere').select('*', { count: 'exact', head: true });
+    const { count: totalAssignments } = await supabase.from('affectations_encadrants').select('*', { count: 'exact', head: true });
+    const { count: totalEncadrants } = await supabase.from('liste_encadrants').select('*', { count: 'exact', head: true });
 
-  const topEncadrants = await query(`
+    const { data: topEncadrantsData } = await supabase.from('affectations_encadrants').select('encadrant');
+    
+    const encCounts = {};
+    if (topEncadrantsData) {
+      topEncadrantsData.forEach(row => {
+        const nom = row.encadrant;
+        if (nom) encCounts[nom] = (encCounts[nom] || 0) + 1;
+      });
+    }
+    const topEncadrants = Object.keys(encCounts)
+      .map(nom => ({ nom, count: encCounts[nom] }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const assignmentRate = totalVoters > 0 ? ((totalAssignments / totalVoters) * 100).toFixed(2) : 0;
+
+    return {
+      totalVoters: totalVoters || 0,
+      totalAssignments: totalAssignments || 0,
+      totalEncadrants: totalEncadrants || 0,
+      assignmentRate,
+      topEncadrants,
+      statsByCommune: []
+    };
+  }
+
+  const totalVotersRow = await getLocal(`SELECT COUNT(*) as count FROM BDD_MERE`);
+  const totalAssignmentsRow = await getLocal(`SELECT COUNT(*) as count FROM AFFECTATIONS_ENCADRANTS`);
+  const totalEncadrantsRow = await getLocal(`SELECT COUNT(*) as count FROM LISTE_ENCADRANTS`);
+
+  const topEncadrants = await queryLocal(`
     SELECT ENCADRANT as nom, COUNT(*) as count 
     FROM AFFECTATIONS_ENCADRANTS 
     GROUP BY ENCADRANT 
@@ -103,7 +152,7 @@ export async function getStats() {
     LIMIT 10
   `);
 
-  const statsByCommune = await query(`
+  const statsByCommune = await queryLocal(`
     SELECT COMMUNE as commune, COUNT(*) as total, 
            (SELECT COUNT(*) FROM AFFECTATIONS_ENCADRANTS a WHERE a.COMMUNE = b.COMMUNE) as affectes
     FROM BDD_MERE b
@@ -129,6 +178,68 @@ export async function getStats() {
 }
 
 export async function searchVoters({ q = '', commune = '', status = 'all', limit = 60, offset = 0 }) {
+  if (isCloudMode) {
+    let queryBuilder = supabase.from('bdd_mere').select('*', { count: 'exact' });
+
+    if (q && q.trim()) {
+      const term = `%${q.trim()}%`;
+      queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term}`);
+    }
+
+    if (commune && commune.trim()) {
+      queryBuilder = queryBuilder.eq('commune', commune.trim());
+    }
+
+    queryBuilder = queryBuilder.range(Number(offset), Number(offset) + Number(limit) - 1);
+
+    const { data: rawVoters, count, error } = await queryBuilder;
+
+    if (error) throw new Error(error.message);
+
+    const cins = (rawVoters || []).map(v => v.cin);
+    let affMap = {};
+
+    if (cins.length > 0) {
+      const { data: affs } = await supabase.from('affectations_encadrants').select('*').in('cin', cins);
+      if (affs) {
+        affs.forEach(a => {
+          affMap[a.cin] = a;
+        });
+      }
+    }
+
+    const voters = (rawVoters || []).map(v => {
+      const aff = affMap[v.cin];
+      return {
+        NUM_ORDRE: v.num_ordre,
+        CIN: v.cin,
+        ADRESSE: v.adresse,
+        DATE_NAISSANCE: v.date_naissance,
+        PRENOM: v.prenom,
+        NOM: v.nom,
+        SEXE: v.sexe,
+        CIRCONSCRIPTION_ELECTORALE: v.circonscription_electorale,
+        COMMUNE: v.commune,
+        NOM_BUREAU_VOTE: v.nom_bureau_vote,
+        ADRESSE_BUREAU_VOTE: v.adresse_bureau_vote,
+        LIEU_BUREAU_VOTE: v.lieu_bureau_vote,
+        affecte_encadrant: aff ? aff.encadrant : null,
+        affecte_tel: aff ? aff.tel : null,
+        affecte_tel_electeur: aff ? aff.tel_electeur : null,
+        affecte_date: aff ? aff.date_inscription : null,
+      };
+    });
+
+    let filteredVoters = voters;
+    if (status === 'unassigned') {
+      filteredVoters = voters.filter(v => !v.affecte_encadrant);
+    } else if (status === 'assigned') {
+      filteredVoters = voters.filter(v => !!v.affecte_encadrant);
+    }
+
+    return { voters: filteredVoters, total: count || 0 };
+  }
+
   let whereClauses = [];
   let params = [];
 
@@ -164,7 +275,7 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
   `;
   params.push(Number(limit), Number(offset));
 
-  const voters = await query(sql, params);
+  const voters = await queryLocal(sql, params);
 
   const countSql = `
     SELECT COUNT(*) as total 
@@ -173,7 +284,7 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
     ${whereStr}
   `;
   const countParams = params.slice(0, -2);
-  const countRow = await get(countSql, countParams);
+  const countRow = await getLocal(countSql, countParams);
 
   return {
     voters,
@@ -182,6 +293,30 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
 }
 
 export async function getVoterByCin(cin) {
+  if (isCloudMode) {
+    const { data: v } = await supabase.from('bdd_mere').select('*').eq('cin', cin).single();
+    if (!v) return null;
+    const { data: aff } = await supabase.from('affectations_encadrants').select('*').eq('cin', cin).single();
+    return {
+      NUM_ORDRE: v.num_ordre,
+      CIN: v.cin,
+      ADRESSE: v.adresse,
+      DATE_NAISSANCE: v.date_naissance,
+      PRENOM: v.prenom,
+      NOM: v.nom,
+      SEXE: v.sexe,
+      CIRCONSCRIPTION_ELECTORALE: v.circonscription_electorale,
+      COMMUNE: v.commune,
+      NOM_BUREAU_VOTE: v.nom_bureau_vote,
+      ADRESSE_BUREAU_VOTE: v.adresse_bureau_vote,
+      LIEU_BUREAU_VOTE: v.lieu_bureau_vote,
+      affecte_encadrant: aff ? aff.encadrant : null,
+      affecte_tel: aff ? aff.tel : null,
+      affecte_tel_electeur: aff ? aff.tel_electeur : null,
+      affecte_date: aff ? aff.date_inscription : null,
+    };
+  }
+
   const sql = `
     SELECT b.*, 
            a.ENCADRANT as affecte_encadrant, 
@@ -192,10 +327,26 @@ export async function getVoterByCin(cin) {
     LEFT JOIN AFFECTATIONS_ENCADRANTS a ON b.CIN = a.CIN
     WHERE b.CIN = ?
   `;
-  return await get(sql, [cin]);
+  return await getLocal(sql, [cin]);
 }
 
 export async function getEncadrants() {
+  if (isCloudMode) {
+    const { data: encs } = await supabase.from('liste_encadrants').select('*').order('nomencadrant', { ascending: true });
+    const { data: affs } = await supabase.from('affectations_encadrants').select('encadrant');
+
+    const countMap = {};
+    (affs || []).forEach(a => {
+      if (a.encadrant) countMap[a.encadrant] = (countMap[a.encadrant] || 0) + 1;
+    });
+
+    return (encs || []).map(e => ({
+      nom: e.nomencadrant,
+      tel: e.tel_encadrant,
+      count_affectations: countMap[e.nomencadrant] || 0
+    }));
+  }
+
   const sql = `
     SELECT e.NomEncadrant as nom, 
            e.TEL_ENCADRANT as tel,
@@ -205,25 +356,75 @@ export async function getEncadrants() {
     GROUP BY e.NomEncadrant
     ORDER BY e.NomEncadrant ASC
   `;
-  return await query(sql);
+  return await queryLocal(sql);
 }
 
 export async function addEncadrant(nom, tel) {
+  if (isCloudMode) {
+    const { error } = await supabase.from('liste_encadrants').upsert({ nomencadrant: nom.trim(), tel_encadrant: tel ? tel.trim() : '' });
+    if (error) throw new Error(error.message);
+    return { success: true };
+  }
+
   const sql = `INSERT INTO LISTE_ENCADRANTS (NomEncadrant, TEL_ENCADRANT) VALUES (?, ?)`;
-  return await run(sql, [nom.trim(), tel ? tel.trim() : '']);
+  return await runLocal(sql, [nom.trim(), tel ? tel.trim() : '']);
 }
 
 export async function updateEncadrant(nom, newTel) {
+  if (isCloudMode) {
+    const { error } = await supabase.from('liste_encadrants').update({ tel_encadrant: newTel ? newTel.trim() : '' }).eq('nomencadrant', nom);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  }
+
   const sql = `UPDATE LISTE_ENCADRANTS SET TEL_ENCADRANT = ? WHERE NomEncadrant = ?`;
-  return await run(sql, [newTel ? newTel.trim() : '', nom]);
+  return await runLocal(sql, [newTel ? newTel.trim() : '', nom]);
 }
 
 export async function deleteEncadrant(nom) {
+  if (isCloudMode) {
+    const { error } = await supabase.from('liste_encadrants').delete().eq('nomencadrant', nom);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  }
+
   const sql = `DELETE FROM LISTE_ENCADRANTS WHERE NomEncadrant = ?`;
-  return await run(sql, [nom]);
+  return await runLocal(sql, [nom]);
 }
 
 export async function getAssignments({ encadrant = '', commune = '', q = '', limit = 1000, offset = 0 }) {
+  if (isCloudMode) {
+    let queryBuilder = supabase.from('affectations_encadrants').select('*', { count: 'exact' });
+
+    if (encadrant) queryBuilder = queryBuilder.eq('encadrant', encadrant);
+    if (commune) queryBuilder = queryBuilder.eq('commune', commune);
+    if (q && q.trim()) {
+      const term = `%${q.trim()}%`;
+      queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term},encadrant.ilike.${term}`);
+    }
+
+    queryBuilder = queryBuilder.order('date_inscription', { ascending: false }).range(Number(offset), Number(offset) + Number(limit) - 1);
+
+    const { data: rawAffs, count, error } = await queryBuilder;
+    if (error) throw new Error(error.message);
+
+    const items = (rawAffs || []).map(a => ({
+      CIN: a.cin,
+      NUM_ORDRE: a.num_ordre,
+      PRENOM: a.prenom,
+      NOM: a.nom,
+      COMMUNE: a.commune,
+      LIEU_BUREAU_VOTE: a.lieu_bureau_vote,
+      ENCADRANT: a.encadrant,
+      TEL: a.tel,
+      TEL_ELECTEUR: a.tel_electeur,
+      NOM_PC: a.nom_pc,
+      DATE_INSCRIPTION: a.date_inscription
+    }));
+
+    return { items, total: count || 0 };
+  }
+
   let whereClauses = [];
   let params = [];
 
@@ -254,11 +455,11 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', lim
   `;
   params.push(Number(limit), Number(offset));
 
-  const items = await query(sql, params);
+  const items = await queryLocal(sql, params);
 
   const countSql = `SELECT COUNT(*) as total FROM AFFECTATIONS_ENCADRANTS a ${whereStr}`;
   const countParams = params.slice(0, -2);
-  const countRow = await get(countSql, countParams);
+  const countRow = await getLocal(countSql, countParams);
 
   return {
     items,
@@ -266,9 +467,128 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', lim
   };
 }
 
+// Verification function for bulk pre-assignment anti-duplicate check
+export async function verifyBulkAssignments({ cins = [] }) {
+  if (!cins || cins.length === 0) {
+    return { total: 0, cleanVoters: [], duplicateVoters: [] };
+  }
+
+  let cleanVoters = [];
+  let duplicateVoters = [];
+
+  if (isCloudMode) {
+    const { data: voters } = await supabase.from('bdd_mere').select('*').in('cin', cins);
+    const { data: affs } = await supabase.from('affectations_encadrants').select('*').in('cin', cins);
+
+    const affMap = {};
+    (affs || []).forEach(a => { affMap[a.cin] = a; });
+
+    (voters || []).forEach(v => {
+      const aff = affMap[v.cin];
+      const item = {
+        cin: v.cin,
+        nom: v.nom,
+        prenom: v.prenom,
+        commune: v.commune,
+        bureau: v.lieu_bureau_vote || v.nom_bureau_vote
+      };
+
+      if (aff) {
+        duplicateVoters.push({
+          ...item,
+          currentEncadrant: aff.encadrant,
+          currentTel: aff.tel
+        });
+      } else {
+        cleanVoters.push(item);
+      }
+    });
+
+  } else {
+    // SQLite Mode
+    const placeholders = cins.map(() => '?').join(',');
+    const sql = `
+      SELECT b.CIN, b.NOM, b.PRENOM, b.COMMUNE, b.LIEU_BUREAU_VOTE, b.NOM_BUREAU_VOTE,
+             a.ENCADRANT as currentEncadrant, a.TEL as currentTel
+      FROM BDD_MERE b
+      LEFT JOIN AFFECTATIONS_ENCADRANTS a ON b.CIN = a.CIN
+      WHERE b.CIN IN (${placeholders})
+    `;
+
+    const rows = await queryLocal(sql, cins);
+
+    rows.forEach(r => {
+      const item = {
+        cin: r.CIN,
+        nom: r.NOM,
+        prenom: r.PRENOM,
+        commune: r.COMMUNE,
+        bureau: r.LIEU_BUREAU_VOTE || r.NOM_BUREAU_VOTE
+      };
+
+      if (r.currentEncadrant) {
+        duplicateVoters.push({
+          ...item,
+          currentEncadrant: r.currentEncadrant,
+          currentTel: r.currentTel
+        });
+      } else {
+        cleanVoters.push(item);
+      }
+    });
+  }
+
+  return {
+    total: cins.length,
+    cleanCount: cleanVoters.length,
+    duplicateCount: duplicateVoters.length,
+    cleanVoters,
+    duplicateVoters
+  };
+}
+
 export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_pc = 'WEB_USER', overwrite = false }) {
-  // Check if voter already assigned to avoid silent duplicates
-  const existingAff = await get(`SELECT * FROM AFFECTATIONS_ENCADRANTS WHERE CIN = ?`, [cin]);
+  if (isCloudMode) {
+    const { data: existingAff } = await supabase.from('affectations_encadrants').select('*').eq('cin', cin).single();
+    if (existingAff && !overwrite) {
+      return {
+        isDuplicate: true,
+        existingEncadrant: existingAff.encadrant,
+        message: `Cet électeur (${cin}) est déjà affecté à ${existingAff.encadrant}.`
+      };
+    }
+
+    const { data: voter } = await supabase.from('bdd_mere').select('*').eq('cin', cin).single();
+    if (!voter) throw new Error(`Électeur introuvable avec le CIN: ${cin}`);
+
+    let phoneToSave = tel;
+    if (!phoneToSave) {
+      const { data: encInfo } = await supabase.from('liste_encadrants').select('tel_encadrant').eq('nomencadrant', encadrant).single();
+      if (encInfo) phoneToSave = encInfo.tel_encadrant;
+    }
+
+    const dateNow = new Date().toISOString();
+
+    const { error } = await supabase.from('affectations_encadrants').upsert({
+      cin: voter.cin,
+      num_ordre: voter.num_ordre || '',
+      prenom: voter.prenom || '',
+      nom: voter.nom || '',
+      commune: voter.commune || '',
+      lieu_bureau_vote: voter.lieu_bureau_vote || voter.nom_bureau_vote || '',
+      encadrant,
+      tel: phoneToSave || '',
+      tel_electeur: tel_electeur || '',
+      nom_pc,
+      date_inscription: dateNow
+    });
+
+    if (error) throw new Error(error.message);
+    return { success: true, cin, encadrant, date: dateNow };
+  }
+
+  // SQLite Mode
+  const existingAff = await getLocal(`SELECT * FROM AFFECTATIONS_ENCADRANTS WHERE CIN = ?`, [cin]);
   if (existingAff && !overwrite) {
     return {
       isDuplicate: true,
@@ -277,14 +597,14 @@ export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_
     };
   }
 
-  const voter = await get(`SELECT * FROM BDD_MERE WHERE CIN = ?`, [cin]);
+  const voter = await getLocal(`SELECT * FROM BDD_MERE WHERE CIN = ?`, [cin]);
   if (!voter) {
     throw new Error(`Électeur introuvable avec le CIN: ${cin}`);
   }
 
   let phoneToSave = tel;
   if (!phoneToSave) {
-    const encInfo = await get(`SELECT TEL_ENCADRANT FROM LISTE_ENCADRANTS WHERE NomEncadrant = ?`, [encadrant]);
+    const encInfo = await getLocal(`SELECT TEL_ENCADRANT FROM LISTE_ENCADRANTS WHERE NomEncadrant = ?`, [encadrant]);
     if (encInfo) {
       phoneToSave = encInfo.TEL_ENCADRANT;
     }
@@ -298,7 +618,7 @@ export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  await run(sql, [
+  await runLocal(sql, [
     voter.CIN,
     voter.NUM_ORDRE || '',
     voter.PRENOM || '',
@@ -320,45 +640,14 @@ export async function assignMultipleVoters({ cins = [], encadrant, tel, overwrit
     throw new Error('Aucun électeur sélectionné.');
   }
 
-  let phoneToSave = tel;
-  if (!phoneToSave) {
-    const encInfo = await get(`SELECT TEL_ENCADRANT FROM LISTE_ENCADRANTS WHERE NomEncadrant = ?`, [encadrant]);
-    if (encInfo) {
-      phoneToSave = encInfo.TEL_ENCADRANT;
-    }
-  }
-
-  const dateNow = new Date().toISOString().replace('T', ' ').substring(0, 19);
-
   let successCount = 0;
   let skippedDuplicates = [];
 
   for (const cin of cins) {
-    const existingAff = await get(`SELECT ENCADRANT FROM AFFECTATIONS_ENCADRANTS WHERE CIN = ?`, [cin]);
-    if (existingAff && !overwrite) {
-      skippedDuplicates.push({ cin, existingEncadrant: existingAff.ENCADRANT });
-      continue; // Skip duplicate
-    }
-
-    const voter = await get(`SELECT * FROM BDD_MERE WHERE CIN = ?`, [cin]);
-    if (voter) {
-      const sql = `
-        INSERT OR REPLACE INTO AFFECTATIONS_ENCADRANTS 
-        (CIN, NUM_ORDRE, PRENOM, NOM, COMMUNE, LIEU_BUREAU_VOTE, ENCADRANT, TEL, NOM_PC, DATE_INSCRIPTION)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      await run(sql, [
-        voter.CIN,
-        voter.NUM_ORDRE || '',
-        voter.PRENOM || '',
-        voter.NOM || '',
-        voter.COMMUNE || '',
-        voter.LIEU_BUREAU_VOTE || voter.NOM_BUREAU_VOTE || '',
-        encadrant,
-        phoneToSave || '',
-        nom_pc,
-        dateNow
-      ]);
+    const res = await assignVoter({ cin, encadrant, tel, overwrite, nom_pc });
+    if (res.isDuplicate) {
+      skippedDuplicates.push({ cin, existingEncadrant: res.existingEncadrant });
+    } else if (res.success) {
       successCount++;
     }
   }
@@ -373,12 +662,27 @@ export async function assignMultipleVoters({ cins = [], encadrant, tel, overwrit
 }
 
 export async function deleteAssignment(cin) {
+  if (isCloudMode) {
+    const { error } = await supabase.from('affectations_encadrants').delete().eq('cin', cin);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  }
+
   const sql = `DELETE FROM AFFECTATIONS_ENCADRANTS WHERE CIN = ?`;
-  return await run(sql, [cin]);
+  return await runLocal(sql, [cin]);
 }
 
 export async function getCommunes() {
+  if (isCloudMode) {
+    const { data } = await supabase.from('bdd_mere').select('commune');
+    const set = new Set();
+    (data || []).forEach(r => {
+      if (r.commune) set.add(r.commune);
+    });
+    return Array.from(set).sort();
+  }
+
   const sql = `SELECT DISTINCT COMMUNE FROM BDD_MERE WHERE COMMUNE IS NOT NULL AND COMMUNE != '' ORDER BY COMMUNE ASC`;
-  const rows = await query(sql);
+  const rows = await queryLocal(sql);
   return rows.map(r => r.COMMUNE);
 }

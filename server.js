@@ -15,6 +15,7 @@ import {
   updateEncadrant,
   deleteEncadrant,
   getAssignments,
+  verifyBulkAssignments,
   assignVoter,
   assignMultipleVoters,
   deleteAssignment,
@@ -121,6 +122,20 @@ app.get('/api/assignments', async (req, res) => {
   try {
     const { encadrant, commune, q, limit, offset } = req.query;
     const result = await getAssignments({ encadrant, commune, q, limit, offset });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Pre-Validation Verification for Bulk Assignment (Explicit Duplicate Check)
+app.post('/api/assignments/verify-bulk', async (req, res) => {
+  try {
+    const { cins } = req.body;
+    if (!cins || !Array.isArray(cins) || cins.length === 0) {
+      return res.status(400).json({ error: 'Liste de CINs requise.' });
+    }
+    const result = await verifyBulkAssignments({ cins });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

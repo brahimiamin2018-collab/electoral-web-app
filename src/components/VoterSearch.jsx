@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX } from 'lucide-react';
+import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle } from 'lucide-react';
 
 export default function VoterSearch({ encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
   const [selectedCommune, setSelectedCommune] = useState('');
-  // Default filter set to 'unassigned' to avoid seeing duplicates!
   const [statusFilter, setStatusFilter] = useState('unassigned'); 
   
   const [voters, setVoters] = useState([]);
@@ -14,13 +13,17 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
   // Selection state for Bulk Assignment
   const [selectedCins, setSelectedCins] = useState([]);
 
+  // Pre-validation duplicate check data
+  const [verifyData, setVerifyData] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+
   // Assignment Modal states
   const [selectedVoter, setSelectedVoter] = useState(null);
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
   const [telEncadrant, setTelEncadrant] = useState('');
   const [telElecteur, setTelElecteur] = useState('');
-  const [overwriteDuplicates, setOverwriteDuplicates] = useState(false);
+  const [forceOverwrite, setForceOverwrite] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
@@ -45,7 +48,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
       const data = await res.json();
       setVoters(data.voters || []);
       setTotal(data.total || 0);
-      setSelectedCins([]); // Reset selection on search change
+      setSelectedCins([]);
     } catch (err) {
       console.error('Erreur recherche électeurs:', err);
     } finally {
@@ -53,7 +56,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     }
   };
 
-  // Toggle voter selection
   const toggleSelectVoter = (cin) => {
     setSelectedCins(prev => 
       prev.includes(cin) ? prev.filter(c => c !== cin) : [...prev, cin]
@@ -68,11 +70,12 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     }
   };
 
-  // Single Assign Modal Open
   const handleOpenAssignModal = (voter) => {
     setIsBulkMode(false);
     setSelectedVoter(voter);
     setTelElecteur(voter.affecte_tel_electeur || '');
+    setVerifyData(null);
+    setForceOverwrite(false);
     
     if (voter.affecte_encadrant) {
       setSelectedEncadrant(voter.affecte_encadrant);
@@ -83,14 +86,31 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     }
   };
 
-  // Bulk Assign Modal Open
-  const handleOpenBulkAssignModal = () => {
+  // Bulk Assign Modal Open with Pre-Validation Duplicate Verification
+  const handleOpenBulkAssignModal = async () => {
     if (selectedCins.length === 0) return;
     setIsBulkMode(true);
     setSelectedVoter(null);
+    setForceOverwrite(false);
+    setVerifying(true);
+
     if (encadrants.length > 0) {
       setSelectedEncadrant(encadrants[0].nom);
       setTelEncadrant(encadrants[0].tel || '');
+    }
+
+    try {
+      const res = await fetch('/api/assignments/verify-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cins: selectedCins }),
+      });
+      const data = await res.json();
+      setVerifyData(data);
+    } catch (err) {
+      console.error('Erreur vérification doublons:', err);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -102,23 +122,34 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     }
   };
 
-  // Single & Bulk Submit Handler
-  const handleAssignSubmit = async (e) => {
+  // Submit Handler
+  const handleAssignSubmit = async (e, excludeDuplicatesOnly = false) => {
     e.preventDefault();
     if (!selectedEncadrant) return;
 
     setSubmitting(true);
     try {
       if (isBulkMode) {
-        // Bulk Assignment API Call with Anti-Duplicate Handling
+        // If user chose to exclude duplicates, filter CINs to clean only
+        let cinsToAssign = selectedCins;
+        if (excludeDuplicatesOnly && verifyData && verifyData.cleanVoters) {
+          cinsToAssign = verifyData.cleanVoters.map(v => v.cin);
+        }
+
+        if (cinsToAssign.length === 0) {
+          setFeedbackMsg({ type: 'error', text: 'Aucun nouvel électeur à affecter.' });
+          setSubmitting(false);
+          return;
+        }
+
         const res = await fetch('/api/assignments/bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            cins: selectedCins,
+            cins: cinsToAssign,
             encadrant: selectedEncadrant,
             tel: telEncadrant,
-            overwrite: overwriteDuplicates,
+            overwrite: forceOverwrite && !excludeDuplicatesOnly,
           }),
         });
 
@@ -126,7 +157,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
         if (res.ok) {
           let msgText = `${data.count} électeur(s) affecté(s) avec succès à ${selectedEncadrant}.`;
           if (data.skippedCount > 0) {
-            msgText += ` ${data.skippedCount} doublon(s) (déjà affectés) ont été automatiquement ignorés.`;
+            msgText += ` ${data.skippedCount} doublon(s) (déjà affectés) ont été protégés et ignorés.`;
           }
           setFeedbackMsg({ type: 'success', text: msgText });
           setSelectedCins([]);
@@ -134,11 +165,10 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
           fetchVoters();
           if (onAssignmentChange) onAssignmentChange();
         } else {
-          setFeedbackMsg({ type: 'error', text: data.error || 'Échec de l\'affectation en masse.' });
+          setFeedbackMsg({ type: 'error', text: data.error || 'Échec de l\'affectation.' });
         }
 
       } else if (selectedVoter) {
-        // Single Assignment API Call
         const res = await fetch('/api/assignments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -147,7 +177,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
             encadrant: selectedEncadrant,
             tel: telEncadrant,
             tel_electeur: telElecteur,
-            overwrite: overwriteDuplicates,
+            overwrite: forceOverwrite,
           }),
         });
 
@@ -210,9 +240,9 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Search className="w-5 h-5 text-sky-400" />
-              <span>Recherche & Anti-Doublons Électoraux</span>
+              <span>Saisie & Affectation Sans Doublons</span>
             </h2>
-            <p className="text-xs text-slate-400">Recherche rapide avec filtre anti-doublon pour masquer les électeurs déjà attribués.</p>
+            <p className="text-xs text-slate-400">Sélectionnez vos électeurs puis affectez-les. Une vérification anti-doublon obligatoire s'exécute avant toute validation.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -235,7 +265,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
         {/* Search Inputs & Anti-Duplicate Filter Bar */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
           
-          {/* Main Search Input */}
           <div className="md:col-span-6 relative">
             <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
             <input
@@ -255,7 +284,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
             )}
           </div>
 
-          {/* Anti-Duplicate Status Selector (Crucial Feature!) */}
+          {/* Anti-Duplicate Status Selector */}
           <div className="md:col-span-3 relative">
             <select
               value={statusFilter}
@@ -268,7 +297,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
             </select>
           </div>
 
-          {/* Commune Selector */}
           <div className="md:col-span-3 relative">
             <Filter className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
             <select
@@ -326,7 +354,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
           <UserX className="w-12 h-12 text-slate-600 mx-auto" />
           <h3 className="text-lg font-semibold text-slate-300">Aucun électeur disponible selon ce filtre</h3>
           <p className="text-sm text-slate-500">
-            {statusFilter === 'unassigned' ? 'Tous les électeurs de ce résultat sont déjà affectés à un encadrant !' : 'Essayez de modifier votre terme de recherche.'}
+            {statusFilter === 'unassigned' ? 'Tous les électeurs affichés sont déjà affectés !' : 'Essayez de modifier vos critères.'}
           </p>
         </div>
       ) : (
@@ -347,7 +375,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
               >
                 <div className="space-y-3">
                   
-                  {/* Checkbox & Clear Status Badge */}
+                  {/* Checkbox & Status */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <button
@@ -382,7 +410,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     )}
                   </div>
 
-                  {/* Voter Name & Num Ordre */}
                   <div>
                     <h3 className="text-lg font-bold text-white leading-tight">
                       {voter.PRENOM} {voter.NOM}
@@ -392,7 +419,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     )}
                   </div>
 
-                  {/* Details List */}
                   <div className="space-y-1.5 text-xs text-slate-400 border-t border-slate-800/80 pt-3">
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
@@ -408,7 +434,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     </div>
                   </div>
 
-                  {/* Assignment Info Badge (Clear Warning for Duplicate) */}
                   {isAssigned && (
                     <div className="bg-amber-950/40 p-3 rounded-xl border border-amber-500/30 text-xs space-y-1">
                       <div className="text-amber-400 font-semibold flex items-center gap-1">
@@ -429,7 +454,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
 
                 </div>
 
-                {/* Card Actions */}
                 <div className="pt-4 border-t border-slate-800 mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => handleOpenAssignModal(voter)}
@@ -440,7 +464,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     }`}
                   >
                     <UserCheck className="w-3.5 h-3.5" />
-                    <span>{isAssigned ? 'Réaffecter (Changer)' : 'Affecter à un encadrant'}</span>
+                    <span>{isAssigned ? 'Réaffecter (Changer)' : 'Affecter'}</span>
                   </button>
 
                   {isAssigned && (
@@ -460,10 +484,10 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
         </div>
       )}
 
-      {/* Assignment Modal (Single OR Bulk) */}
+      {/* Assignment Modal with MANDATORY PRE-VALIDATION DUPLICATE CHECK */}
       {(selectedVoter || isBulkMode) && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel max-w-lg w-full rounded-2xl border border-slate-800 p-6 space-y-6 shadow-2xl animate-scale-up">
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-panel max-w-lg w-full rounded-2xl border border-slate-800 p-6 space-y-6 shadow-2xl my-8 animate-scale-up max-h-[90vh] flex flex-col">
             
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div className="flex items-center space-x-3">
@@ -472,129 +496,210 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-lg">
-                    {isBulkMode ? `Affecter ${selectedCins.length} Électeurs en Masse` : 'Affecter un Électeur'}
+                    {isBulkMode ? `Affectation en Masse (${selectedCins.length} Électeurs)` : 'Affecter un Électeur'}
                   </h3>
-                  <p className="text-xs text-slate-400">Attribution d'un encadrant responsable</p>
+                  <p className="text-xs text-slate-400">Vérification anti-doublon avant validation</p>
                 </div>
               </div>
               <button 
-                onClick={() => { setSelectedVoter(null); setIsBulkMode(false); }}
+                onClick={() => { setSelectedVoter(null); setIsBulkMode(false); setVerifyData(null); }}
                 className="text-slate-400 hover:text-white p-2"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Voter Preview Card */}
-            {isBulkMode ? (
-              <div className="p-4 bg-sky-950/40 rounded-xl border border-sky-500/30 text-xs space-y-1">
-                <div className="font-bold text-sky-300 text-sm">
-                  {selectedCins.length} électeurs sélectionnés pour cette affectation
-                </div>
-                <div className="text-slate-400 font-mono text-[11px] truncate">
-                  CINs: {selectedCins.join(', ')}
-                </div>
-              </div>
-            ) : selectedVoter && (
-              <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-bold text-white text-base">{selectedVoter.PRENOM} {selectedVoter.NOM}</h4>
-                  <span className="font-mono text-xs text-sky-400 font-semibold bg-sky-500/10 px-2 py-0.5 rounded">
-                    CIN: {selectedVoter.CIN}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Commune: <span className="text-slate-200">{selectedVoter.COMMUNE || 'N/C'}</span> • Bureau: <span className="text-slate-200">{selectedVoter.LIEU_BUREAU_VOTE || selectedVoter.NOM_BUREAU_VOTE || 'N/C'}</span>
-                </p>
-              </div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={handleAssignSubmit} className="space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4">
               
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">
-                  Sélectionnez l'Encadrant Responsable:
-                </label>
-                <select
-                  value={selectedEncadrant}
-                  onChange={(e) => handleEncadrantSelect(e.target.value)}
-                  className="w-full py-3 px-4 glass-input rounded-xl text-sm bg-slate-900 text-white"
-                  required
-                >
-                  {encadrants.map((e, idx) => (
-                    <option key={idx} value={e.nom}>
-                      {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">
-                  Téléphone Encadrant:
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
-                  <input
-                    type="text"
-                    value={telEncadrant}
-                    onChange={(e) => setTelEncadrant(e.target.value)}
-                    placeholder="ex: 0661234567"
-                    className="w-full pl-10 pr-4 py-3 glass-input rounded-xl text-sm"
-                  />
+              {/* Pre-validation Duplicate Verification Card */}
+              {verifying ? (
+                <div className="p-4 bg-slate-900 rounded-xl text-center text-xs text-slate-400">
+                  <div className="animate-spin w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full mx-auto mb-2"></div>
+                  Vérification des doublons dans la base de données...
                 </div>
-              </div>
+              ) : isBulkMode && verifyData && (
+                <div className="space-y-3">
+                  
+                  {/* Summary Metric */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center space-x-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                      <div>
+                        <div className="font-bold text-emerald-300 text-sm">{verifyData.cleanCount} Électeurs Nouveaux</div>
+                        <div className="text-slate-400 text-[11px]">Disponibles pour affectation</div>
+                      </div>
+                    </div>
 
-              {!isBulkMode && (
+                    <div className={`p-3 rounded-xl border flex items-center space-x-2 ${
+                      verifyData.duplicateCount > 0 
+                        ? 'bg-amber-950/50 border-amber-500/50 text-amber-300' 
+                        : 'bg-slate-900/60 border-slate-800 text-slate-400'
+                    }`}>
+                      <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${verifyData.duplicateCount > 0 ? 'text-amber-400' : 'text-slate-500'}`} />
+                      <div>
+                        <div className="font-bold text-sm">{verifyData.duplicateCount} Doublons Détectés</div>
+                        <div className="text-[11px]">Déjà affectés auparavant</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List of Duplicate Voters if any */}
+                  {verifyData.duplicateCount > 0 && (
+                    <div className="p-3.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs space-y-2 max-h-40 overflow-y-auto">
+                      <div className="font-bold text-amber-300 flex items-center space-x-1.5">
+                        <ShieldAlert className="w-4 h-4 text-amber-400" />
+                        <span>ATTENTION : Les électeurs suivants sont DÉJÀ affectés :</span>
+                      </div>
+                      <ul className="space-y-1 pl-1">
+                        {verifyData.duplicateVoters.map((dup, idx) => (
+                          <li key={idx} className="text-slate-300 flex justify-between items-center text-[11px] bg-slate-900/60 p-1.5 rounded border border-slate-800">
+                            <span><strong>{dup.cin}</strong> - {dup.prenom} {dup.nom}</span>
+                            <span className="text-amber-400 font-semibold">Actuellement avec: {dup.currentEncadrant}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {!isBulkMode && selectedVoter && (
+                <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-bold text-white text-base">{selectedVoter.PRENOM} {selectedVoter.NOM}</h4>
+                    <span className="font-mono text-sky-400 font-semibold bg-sky-500/10 px-2 py-0.5 rounded">
+                      CIN: {selectedVoter.CIN}
+                    </span>
+                  </div>
+                  <p className="text-slate-400">
+                    Commune: <span className="text-slate-200">{selectedVoter.COMMUNE || 'N/C'}</span> • Bureau: <span className="text-slate-200">{selectedVoter.LIEU_BUREAU_VOTE || selectedVoter.NOM_BUREAU_VOTE || 'N/C'}</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Form */}
+              <form id="assignForm" onSubmit={(e) => handleAssignSubmit(e, false)} className="space-y-4 pt-2">
+                
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">
-                    Numéro de Téléphone de l'Électeur (Optionnel):
+                    Sélectionnez l'Encadrant Responsable:
+                  </label>
+                  <select
+                    value={selectedEncadrant}
+                    onChange={(e) => handleEncadrantSelect(e.target.value)}
+                    className="w-full py-3 px-4 glass-input rounded-xl text-sm bg-slate-900 text-white font-semibold"
+                    required
+                  >
+                    {encadrants.map((e, idx) => (
+                      <option key={idx} value={e.nom}>
+                        {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Numéro de Téléphone Encadrant:
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-emerald-500" />
+                    <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
                     <input
                       type="text"
-                      value={telElecteur}
-                      onChange={(e) => setTelElecteur(e.target.value)}
-                      placeholder="ex: 0612345678"
+                      value={telEncadrant}
+                      onChange={(e) => setTelEncadrant(e.target.value)}
+                      placeholder="ex: 0661234567"
                       className="w-full pl-10 pr-4 py-3 glass-input rounded-xl text-sm"
                     />
                   </div>
                 </div>
+
+                {!isBulkMode && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Numéro de Téléphone de l'Électeur (Optionnel):
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-emerald-500" />
+                      <input
+                        type="text"
+                        value={telElecteur}
+                        onChange={(e) => setTelElecteur(e.target.value)}
+                        placeholder="ex: 0612345678"
+                        className="w-full pl-10 pr-4 py-3 glass-input rounded-xl text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+              </form>
+            </div>
+
+            {/* Validation Buttons & Options */}
+            <div className="pt-4 border-t border-slate-800 space-y-3">
+              
+              {isBulkMode && verifyData && verifyData.duplicateCount > 0 ? (
+                <div className="space-y-2">
+                  
+                  {/* Button 1: Recommended safe validation (Excludes duplicates) */}
+                  <button
+                    type="button"
+                    disabled={submitting || verifyData.cleanCount === 0}
+                    onClick={(e) => handleAssignSubmit(e, true)}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center justify-center space-x-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Affecter UNIQUEMENT les {verifyData.cleanCount} Nouveaux Électeurs (Protéger les Doublons)</span>
+                  </button>
+
+                  {/* Optional Override Checkbox */}
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 flex items-center space-x-2 text-[11px] text-slate-400">
+                    <input
+                      type="checkbox"
+                      id="forceOverwriteCheck"
+                      checked={forceOverwrite}
+                      onChange={(e) => setForceOverwrite(e.target.checked)}
+                      className="rounded border-slate-700 text-amber-500 focus:ring-amber-500"
+                    />
+                    <label htmlFor="forceOverwriteCheck" className="cursor-pointer">
+                      Forcer la ré-affectation des {verifyData.duplicateCount} doublons vers {selectedEncadrant}
+                    </label>
+                  </div>
+
+                  {forceOverwrite && (
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={(e) => handleAssignSubmit(e, false)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition"
+                    >
+                      Forcer l'affectation de TOUS les {verifyData.total} électeurs (Y compris les doublons)
+                    </button>
+                  )}
+
+                </div>
+              ) : (
+                <div className="flex items-center justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedVoter(null); setIsBulkMode(false); setVerifyData(null); }}
+                    className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    form="assignForm"
+                    disabled={submitting}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-semibold shadow-lg shadow-sky-500/20 disabled:opacity-50"
+                  >
+                    {submitting ? 'Validation...' : 'Valider l\'Affectation'}
+                  </button>
+                </div>
               )}
 
-              {/* Anti-Duplicate Safety Checkbox */}
-              <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center space-x-2 text-xs text-slate-300">
-                <input
-                  type="checkbox"
-                  id="overwriteCheckbox"
-                  checked={overwriteDuplicates}
-                  onChange={(e) => setOverwriteDuplicates(e.target.checked)}
-                  className="rounded border-slate-700 text-sky-500 focus:ring-sky-500"
-                />
-                <label htmlFor="overwriteCheckbox" className="cursor-pointer">
-                  Autoriser la ré-affectation si l'électeur est déjà attribué à un autre encadrant.
-                </label>
-              </div>
-
-              <div className="pt-4 flex items-center justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedVoter(null); setIsBulkMode(false); }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-semibold shadow-lg shadow-sky-500/20 disabled:opacity-50"
-                >
-                  {submitting ? 'Enregistrement...' : isBulkMode ? `Valider l'Affectation` : 'Valider l\'Affectation'}
-                </button>
-              </div>
-            </form>
+            </div>
 
           </div>
         </div>
