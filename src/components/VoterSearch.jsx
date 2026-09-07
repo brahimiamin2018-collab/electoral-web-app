@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle } from 'lucide-react';
+import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2 } from 'lucide-react';
 
 export default function VoterSearch({ encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
@@ -10,7 +10,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   
-  // Selection state for Bulk Assignment
+  // Selection state for Bulk Assignment PERSISTENT ACROSS SEARCHES
   const [selectedCins, setSelectedCins] = useState([]);
 
   // Pre-validation duplicate check data
@@ -48,7 +48,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
       const data = await res.json();
       setVoters(data.voters || []);
       setTotal(data.total || 0);
-      setSelectedCins([]);
+      // NOTE: We DO NOT reset selectedCins here so selections persist across searches!
     } catch (err) {
       console.error('Erreur recherche électeurs:', err);
     } finally {
@@ -56,17 +56,24 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     }
   };
 
+  // Toggle voter selection
   const toggleSelectVoter = (cin) => {
     setSelectedCins(prev => 
       prev.includes(cin) ? prev.filter(c => c !== cin) : [...prev, cin]
     );
   };
 
-  const toggleSelectAll = () => {
-    if (selectedCins.length === voters.length) {
-      setSelectedCins([]);
+  // Toggle select all for currently visible voters without losing previous selections
+  const toggleSelectAllVisible = () => {
+    const visibleCins = voters.map(v => v.CIN);
+    const allVisibleSelected = visibleCins.every(cin => selectedCins.includes(cin));
+
+    if (allVisibleSelected) {
+      // Remove visible CINs from selection
+      setSelectedCins(prev => prev.filter(cin => !visibleCins.includes(cin)));
     } else {
-      setSelectedCins(voters.map(v => v.CIN));
+      // Add visible CINs to selection without duplicates
+      setSelectedCins(prev => Array.from(new Set([...prev, ...visibleCins])));
     }
   };
 
@@ -130,7 +137,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     setSubmitting(true);
     try {
       if (isBulkMode) {
-        // If user chose to exclude duplicates, filter CINs to clean only
         let cinsToAssign = selectedCins;
         if (excludeDuplicatesOnly && verifyData && verifyData.cleanVoters) {
           cinsToAssign = verifyData.cleanVoters.map(v => v.cin);
@@ -157,7 +163,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
         if (res.ok) {
           let msgText = `${data.count} électeur(s) affecté(s) avec succès à ${selectedEncadrant}.`;
           if (data.skippedCount > 0) {
-            msgText += ` ${data.skippedCount} doublon(s) (déjà affectés) ont été protégés et ignorés.`;
+            msgText += ` ${data.skippedCount} doublon(s) ont été ignorés.`;
           }
           setFeedbackMsg({ type: 'success', text: msgText });
           setSelectedCins([]);
@@ -216,10 +222,11 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     }
   };
 
-  const isAllSelected = voters.length > 0 && selectedCins.length === voters.length;
+  const visibleCins = voters.map(v => v.CIN);
+  const isAllVisibleSelected = visibleCins.length > 0 && visibleCins.every(cin => selectedCins.includes(cin));
 
   return (
-    <div className="space-y-6 relative pb-20">
+    <div className="space-y-6 relative pb-24">
       
       {/* Toast Notification */}
       {feedbackMsg && (
@@ -240,24 +247,24 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Search className="w-5 h-5 text-sky-400" />
-              <span>Saisie & Affectation Sans Doublons</span>
+              <span>Saisie & Sélection Cumulée Multi-Recherches</span>
             </h2>
-            <p className="text-xs text-slate-400">Sélectionnez vos électeurs puis affectez-les. Une vérification anti-doublon obligatoire s'exécute avant toute validation.</p>
+            <p className="text-xs text-slate-400">Recherchez et cochez vos électeurs. Vos sélections sont conservées en mémoire d'une recherche à l'autre !</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {voters.length > 0 && (
               <button
-                onClick={toggleSelectAll}
+                onClick={toggleSelectAllVisible}
                 className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-medium text-slate-300 hover:text-white transition"
               >
-                {isAllSelected ? <CheckSquare className="w-4 h-4 text-sky-400" /> : <Square className="w-4 h-4 text-slate-500" />}
-                <span>{isAllSelected ? 'Tout décocher' : 'Tout sélectionner'}</span>
+                {isAllVisibleSelected ? <CheckSquare className="w-4 h-4 text-sky-400" /> : <Square className="w-4 h-4 text-slate-500" />}
+                <span>{isAllVisibleSelected ? 'Décocher la page' : 'Cocher la page'}</span>
               </button>
             )}
 
             <div className="text-xs text-slate-400 bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
-              Résultats : <span className="text-sky-400 font-bold">{voters.length}</span> / {total.toLocaleString()}
+              Résultats affichés : <span className="text-sky-400 font-bold">{voters.length}</span> / {total.toLocaleString()}
             </div>
           </div>
         </div>
@@ -271,7 +278,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Saisissez CIN, Nom ou Prénom..."
+              placeholder="Tapez un nom ou CIN (ex: SH10) pour ajouter à votre sélection..."
               className="w-full pl-12 pr-4 py-3 glass-input rounded-xl text-sm focus:ring-2 focus:ring-sky-500/50"
             />
             {query && (
@@ -314,14 +321,17 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
         </div>
       </div>
 
-      {/* Floating Action Bar for Bulk Assignment */}
+      {/* Floating Action Bar for PERSISTENT Bulk Assignment */}
       {selectedCins.length > 0 && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-slate-900/95 border-2 border-sky-500 text-white px-6 py-3.5 rounded-2xl shadow-2xl backdrop-blur-md flex items-center space-x-6 animate-slide-up">
-          <div className="flex items-center space-x-2 text-sm font-semibold">
-            <span className="w-7 h-7 rounded-full bg-sky-500 text-white flex items-center justify-center font-bold text-xs">
+          <div className="flex items-center space-x-3 text-sm font-semibold">
+            <span className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center font-extrabold text-sm shadow-md shadow-sky-500/40">
               {selectedCins.length}
             </span>
-            <span>électeurs sélectionnés</span>
+            <div>
+              <div>électeurs accumulés en mémoire</div>
+              <div className="text-[10px] text-slate-400 font-normal">Conservés à travers vos recherches</div>
+            </div>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -330,14 +340,16 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
               className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-bold shadow-lg shadow-sky-500/30 transition transform hover:scale-105"
             >
               <UserCheck className="w-4 h-4" />
-              <span>Affecter les {selectedCins.length} personnes</span>
+              <span>Affecter les {selectedCins.length} électeurs</span>
             </button>
 
             <button
               onClick={() => setSelectedCins([])}
-              className="text-xs text-slate-400 hover:text-white px-2 py-1"
+              className="text-xs text-rose-400 hover:text-rose-300 px-3 py-2 border border-rose-500/20 bg-rose-500/10 rounded-xl flex items-center space-x-1"
+              title="Vider toute la sélection accumulée"
             >
-              Annuler
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Vider</span>
             </button>
           </div>
         </div>
@@ -369,7 +381,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                 onClick={() => toggleSelectVoter(voter.CIN)}
                 className={`glass-card p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between cursor-pointer relative ${
                   isChecked 
-                    ? 'border-sky-400 bg-sky-950/30 ring-2 ring-sky-500/30' 
+                    ? 'border-sky-400 bg-sky-950/40 ring-2 ring-sky-500/40' 
                     : isAssigned ? 'border-amber-500/40 bg-amber-950/10' : 'border-slate-800 hover:border-slate-700'
                 }`}
               >
@@ -464,7 +476,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     }`}
                   >
                     <UserCheck className="w-3.5 h-3.5" />
-                    <span>{isAssigned ? 'Réaffecter (Changer)' : 'Affecter'}</span>
+                    <span>{isAssigned ? 'Réaffecter' : 'Affecter'}</span>
                   </button>
 
                   {isAssigned && (
@@ -484,7 +496,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
         </div>
       )}
 
-      {/* Assignment Modal with MANDATORY PRE-VALIDATION DUPLICATE CHECK */}
+      {/* Assignment Modal */}
       {(selectedVoter || isBulkMode) && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="glass-panel max-w-lg w-full rounded-2xl border border-slate-800 p-6 space-y-6 shadow-2xl my-8 animate-scale-up max-h-[90vh] flex flex-col">
@@ -511,7 +523,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
 
             <div className="flex-1 overflow-y-auto space-y-4">
               
-              {/* Pre-validation Duplicate Verification Card */}
               {verifying ? (
                 <div className="p-4 bg-slate-900 rounded-xl text-center text-xs text-slate-400">
                   <div className="animate-spin w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -520,13 +531,12 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
               ) : isBulkMode && verifyData && (
                 <div className="space-y-3">
                   
-                  {/* Summary Metric */}
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center space-x-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                       <div>
-                        <div className="font-bold text-emerald-300 text-sm">{verifyData.cleanCount} Électeurs Nouveaux</div>
-                        <div className="text-slate-400 text-[11px]">Disponibles pour affectation</div>
+                        <div className="font-bold text-emerald-300 text-sm">{verifyData.cleanCount} Nouveaux Électeurs</div>
+                        <div className="text-slate-400 text-[11px]">Prêts à être affectés</div>
                       </div>
                     </div>
 
@@ -537,24 +547,23 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     }`}>
                       <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${verifyData.duplicateCount > 0 ? 'text-amber-400' : 'text-slate-500'}`} />
                       <div>
-                        <div className="font-bold text-sm">{verifyData.duplicateCount} Doublons Détectés</div>
-                        <div className="text-[11px]">Déjà affectés auparavant</div>
+                        <div className="font-bold text-sm">{verifyData.duplicateCount} Doublons</div>
+                        <div className="text-[11px]">Déjà attribués</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* List of Duplicate Voters if any */}
                   {verifyData.duplicateCount > 0 && (
                     <div className="p-3.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs space-y-2 max-h-40 overflow-y-auto">
                       <div className="font-bold text-amber-300 flex items-center space-x-1.5">
                         <ShieldAlert className="w-4 h-4 text-amber-400" />
-                        <span>ATTENTION : Les électeurs suivants sont DÉJÀ affectés :</span>
+                        <span>ATTENTION : Électeurs DÉJÀ affectés :</span>
                       </div>
                       <ul className="space-y-1 pl-1">
                         {verifyData.duplicateVoters.map((dup, idx) => (
                           <li key={idx} className="text-slate-300 flex justify-between items-center text-[11px] bg-slate-900/60 p-1.5 rounded border border-slate-800">
                             <span><strong>{dup.cin}</strong> - {dup.prenom} {dup.nom}</span>
-                            <span className="text-amber-400 font-semibold">Actuellement avec: {dup.currentEncadrant}</span>
+                            <span className="text-amber-400 font-semibold">Avec: {dup.currentEncadrant}</span>
                           </li>
                         ))}
                       </ul>
@@ -578,7 +587,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                 </div>
               )}
 
-              {/* Form */}
               <form id="assignForm" onSubmit={(e) => handleAssignSubmit(e, false)} className="space-y-4 pt-2">
                 
                 <div className="space-y-1.5">
@@ -636,13 +644,11 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
               </form>
             </div>
 
-            {/* Validation Buttons & Options */}
             <div className="pt-4 border-t border-slate-800 space-y-3">
               
               {isBulkMode && verifyData && verifyData.duplicateCount > 0 ? (
                 <div className="space-y-2">
                   
-                  {/* Button 1: Recommended safe validation (Excludes duplicates) */}
                   <button
                     type="button"
                     disabled={submitting || verifyData.cleanCount === 0}
@@ -653,7 +659,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     <span>Affecter UNIQUEMENT les {verifyData.cleanCount} Nouveaux Électeurs (Protéger les Doublons)</span>
                   </button>
 
-                  {/* Optional Override Checkbox */}
                   <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 flex items-center space-x-2 text-[11px] text-slate-400">
                     <input
                       type="checkbox"
@@ -663,7 +668,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                       className="rounded border-slate-700 text-amber-500 focus:ring-amber-500"
                     />
                     <label htmlFor="forceOverwriteCheck" className="cursor-pointer">
-                      Forcer la ré-affectation des {verifyData.duplicateCount} doublons vers {selectedEncadrant}
+                      Autoriser la ré-affectation des {verifyData.duplicateCount} doublons vers {selectedEncadrant}
                     </label>
                   </div>
 
