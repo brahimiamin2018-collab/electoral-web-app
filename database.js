@@ -229,9 +229,10 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
 
     const voters = (rawVoters || []).map(v => {
       const aff = affMap[v.cin];
+      const cleanCin = (v.cin || '').split('#')[0] === 'EMPTY' ? '' : (v.cin || '').split('#')[0];
       return {
         NUM_ORDRE: v.num_ordre,
-        CIN: v.cin,
+        CIN: cleanCin,
         ADRESSE: v.adresse,
         DATE_NAISSANCE: v.date_naissance,
         PRENOM: v.prenom,
