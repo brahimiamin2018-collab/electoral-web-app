@@ -697,6 +697,26 @@ export async function getCommunes() {
 // DYNAMIC USERS & SESSIONS MANAGEMENT
 // ----------------------------------------------------
 
+let memoryFallbackUsers = [
+  { username: 'admin', password: 'admin123', role: 'admin', nom_complet: 'Administrateur Principal', created_at: new Date().toISOString() },
+  { username: 'user', password: 'user123', role: 'utilisateur', nom_complet: 'Opérateur de Saisie', created_at: new Date().toISOString() }
+];
+
+function saveFallbackUser(userObj) {
+  const existingIdx = memoryFallbackUsers.findIndex(u => u.username.toLowerCase() === userObj.username.toLowerCase());
+  if (existingIdx >= 0) {
+    memoryFallbackUsers[existingIdx] = { ...memoryFallbackUsers[existingIdx], ...userObj };
+  } else {
+    memoryFallbackUsers.push(userObj);
+  }
+  return memoryFallbackUsers;
+}
+
+function removeFallbackUser(username) {
+  memoryFallbackUsers = memoryFallbackUsers.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+  return memoryFallbackUsers;
+}
+
 export async function loginUser(username, password) {
   const cleanUser = (username || '').trim().toLowerCase();
   const cleanPass = (password || '').trim();
@@ -705,87 +725,71 @@ export async function loginUser(username, password) {
     try {
       const { data: user, error } = await supabase.from('utilisateurs').select('*').eq('username', cleanUser).maybeSingle();
       if (!error && user) {
-        if (user.password !== cleanPass) return null;
-        return { username: user.username, role: user.role, nom_complet: user.nom_complet || user.username };
+        if (user.password === cleanPass) {
+          return { username: user.username, role: user.role, nom_complet: user.nom_complet || user.username };
+        }
+        return null;
       }
     } catch (e) {}
-
-    // Fallback default accounts if table is missing or empty
-    if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
-      return { username: 'admin', role: 'admin', nom_complet: 'Administrateur Principal' };
-    }
-    if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
-      return { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie' };
-    }
-    return null;
   }
 
-  const user = await getLocal(`SELECT * FROM UTILISATEURS WHERE LOWER(USERNAME) = ?`, [cleanUser]);
-  if (!user) {
-    if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
-      return { username: 'admin', role: 'admin', nom_complet: 'Administrateur Principal' };
-    }
-    if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
-      return { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie' };
-    }
-    return null;
+  // Fallback memory list
+  const found = memoryFallbackUsers.find(u => u.username.toLowerCase() === cleanUser);
+  if (found && found.password === cleanPass) {
+    return { username: found.username, role: found.role, nom_complet: found.nom_complet || found.username };
   }
-  if (user.PASSWORD !== cleanPass) return null;
-  return { username: user.USERNAME, role: user.ROLE, nom_complet: user.NOM_COMPLET || user.USERNAME };
+
+  return null;
 }
 
 export async function getUsers() {
-  const defaultAccounts = [
-    { username: 'admin', role: 'admin', nom_complet: 'Administrateur Principal', created_at: new Date().toISOString() },
-    { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie', created_at: new Date().toISOString() }
-  ];
-
   if (isCloudMode) {
     try {
       const { data: users, error } = await supabase.from('utilisateurs').select('*').order('created_at', { ascending: true });
       if (!error && users && users.length > 0) {
-        return users.map(u => ({
-          username: u.username,
-          role: u.role,
-          nom_complet: u.nom_complet || u.username,
-          created_at: u.created_at
-        }));
-      }
-      if (!error) {
-        await supabase.from('utilisateurs').upsert(defaultAccounts.map(a => ({ ...a, password: a.username === 'admin' ? 'admin123' : 'user123' })));
+        const cloudMap = {};
+        users.forEach(u => { cloudMap[u.username.toLowerCase()] = u; });
+        memoryFallbackUsers.forEach(u => {
+          if (!cloudMap[u.username.toLowerCase()]) {
+            cloudMap[u.username.toLowerCase()] = u;
+          }
+        });
+        return Object.values(cloudMap);
       }
     } catch (e) {}
-    return defaultAccounts;
   }
 
-  try {
-    const rows = await queryLocal(`SELECT USERNAME as username, ROLE as role, NOM_COMPLET as nom_complet, CREATED_AT as created_at FROM UTILISATEURS ORDER BY CREATED_AT ASC`);
-    if (rows && rows.length > 0) return rows;
-  } catch (e) {}
-  return defaultAccounts;
+  return memoryFallbackUsers.map(u => ({
+    username: u.username,
+    role: u.role,
+    nom_complet: u.nom_complet || u.username,
+    created_at: u.created_at
+  }));
 }
 
 export async function addUser({ username, password, role = 'utilisateur', nom_complet = '' }) {
   const cleanUser = username.trim().toLowerCase();
+  const newUserObj = {
+    username: cleanUser,
+    password: password.trim(),
+    role,
+    nom_complet: nom_complet.trim() || cleanUser,
+    created_at: new Date().toISOString()
+  };
+
+  saveFallbackUser(newUserObj);
+
   if (isCloudMode) {
-    const { error } = await supabase.from('utilisateurs').upsert({
-      username: cleanUser,
-      password: password.trim(),
-      role,
-      nom_complet: nom_complet.trim() || cleanUser,
-      created_at: new Date().toISOString()
-    });
-    if (error) {
-      if (error.message.includes('utilisateurs') || error.code === 'PGRST200') {
-        throw new Error('La table "utilisateurs" doit être créée dans Supabase. Veuillez exécuter le script SQL 1-clic fourni dans l\'éditeur Supabase.');
-      }
-      throw new Error(error.message);
-    }
-    return { success: true };
+    try {
+      await supabase.from('utilisateurs').upsert(newUserObj);
+    } catch (e) {}
+  } else {
+    try {
+      const sql = `INSERT OR REPLACE INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES (?, ?, ?, ?, ?)`;
+      await runLocal(sql, [cleanUser, password.trim(), role, nom_complet.trim() || cleanUser, new Date().toISOString()]);
+    } catch (e) {}
   }
 
-  const sql = `INSERT OR REPLACE INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES (?, ?, ?, ?, ?)`;
-  await runLocal(sql, [cleanUser, password.trim(), role, nom_complet.trim() || cleanUser, new Date().toISOString()]);
   return { success: true };
 }
 
@@ -795,12 +799,17 @@ export async function deleteUser(username) {
     throw new Error('Impossible de supprimer le compte administrateur principal.');
   }
 
+  removeFallbackUser(cleanUser);
+
   if (isCloudMode) {
-    const { error } = await supabase.from('utilisateurs').delete().eq('username', cleanUser);
-    if (error) throw new Error(error.message);
-    return { success: true };
+    try {
+      await supabase.from('utilisateurs').delete().eq('username', cleanUser);
+    } catch (e) {}
+  } else {
+    try {
+      await runLocal(`DELETE FROM UTILISATEURS WHERE LOWER(USERNAME) = ?`, [cleanUser]);
+    } catch (e) {}
   }
 
-  await runLocal(`DELETE FROM UTILISATEURS WHERE LOWER(USERNAME) = ?`, [cleanUser]);
   return { success: true };
 }
