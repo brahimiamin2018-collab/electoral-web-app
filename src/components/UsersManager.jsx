@@ -104,7 +104,7 @@ export default function UsersManager() {
 
   const handleDeleteUser = async (userToDelete) => {
     const cleanUser = userToDelete.toLowerCase();
-    if (cleanUser === 'admin') {
+    if (cleanUser === 'salama' || cleanUser === 'admin') {
       alert('Impossible de supprimer le compte administrateur principal.');
       return;
     }
@@ -207,7 +207,7 @@ export default function UsersManager() {
 
                 {/* Actions */}
                 <div className="pt-4 border-t border-slate-800 flex items-center justify-end">
-                  {u.username.toLowerCase() !== 'admin' ? (
+                  {u.username.toLowerCase() !== 'admin' && u.username.toLowerCase() !== 'salama' ? (
                     <button
                       onClick={() => handleDeleteUser(u.username)}
                       className="flex items-center space-x-1.5 px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg transition"

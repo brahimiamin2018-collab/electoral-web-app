@@ -752,7 +752,7 @@ export async function getCommunes() {
 const usersFilePath = path.join(__dirname, 'users_db.json');
 
 const defaultUsersList = [
-  { username: 'admin', password: 'admin123', role: 'admin', nom_complet: 'Administrateur Principal', created_at: new Date().toISOString() },
+  { username: 'salama', password: 'electorale@1475963', role: 'admin', nom_complet: 'Administrateur Principal (salama)', created_at: new Date().toISOString() },
   { username: 'user', password: 'user123', role: 'utilisateur', nom_complet: 'Opérateur de Saisie', created_at: new Date().toISOString() },
   { username: 'visiteur', password: 'visiteur123', role: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)', created_at: new Date().toISOString() }
 ];
@@ -801,8 +801,8 @@ export async function loginUser(username, password) {
   const cleanPass = (password || '').trim();
 
   // Check default built-in accounts
-  if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
-    return { username: 'admin', role: 'admin', nom_complet: 'Administrateur Principal' };
+  if ((cleanUser === 'salama' || cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'electorale@1475963' || cleanPass === 'admin123' || cleanPass === 'admin')) {
+    return { username: 'salama', role: 'admin', nom_complet: 'Administrateur Principal (salama)' };
   }
   if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
     return { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie' };
@@ -925,7 +925,7 @@ export async function addUser({ username, password, role = 'utilisateur', nom_co
 
 export async function deleteUser(username) {
   const cleanUser = username.trim().toLowerCase();
-  if (cleanUser === 'admin') {
+  if (cleanUser === 'salama' || cleanUser === 'admin') {
     throw new Error('Impossible de supprimer le compte administrateur principal.');
   }
 

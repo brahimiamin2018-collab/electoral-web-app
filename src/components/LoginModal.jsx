@@ -40,8 +40,8 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
     }
 
     // Check Admin built-in credentials
-    if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
-      onLogin({ role: 'admin', username: 'admin', nom_complet: 'Administrateur Principal' });
+    if ((cleanUser === 'salama' || cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'electorale@1475963' || cleanPass === 'admin123' || cleanPass === 'admin')) {
+      onLogin({ role: 'admin', username: 'salama', nom_complet: 'Administrateur Principal (salama)' });
       if (onClose) onClose();
       return;
     }
