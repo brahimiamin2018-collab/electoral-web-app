@@ -128,7 +128,7 @@ app.get('/api/assignments', async (req, res) => {
   }
 });
 
-// Pre-Validation Verification for Bulk Assignment (Explicit Duplicate Check)
+// Pre-Validation Verification for Bulk Assignment
 app.post('/api/assignments/verify-bulk', async (req, res) => {
   try {
     const { cins } = req.body;
@@ -222,15 +222,18 @@ app.post('/api/migrate', (req, res) => {
 // ----------------------------------------------------
 // PRODUCTION STATIC FILE SERVING (VITE DIST FOLDER)
 // ----------------------------------------------------
-const distPath = path.join(__dirname, 'dist');
+const distPath = path.join(process.cwd(), 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
-  console.log(`📦 Mode Production: Interface React servie depuis ${distPath}`);
 }
 
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur Web & API Électorale démarré sur http://localhost:${PORT}`);
-});
+export default app;
+
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Serveur Web & API Électorale démarré sur http://localhost:${PORT}`);
+  });
+}
