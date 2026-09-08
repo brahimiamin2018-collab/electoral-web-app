@@ -303,9 +303,9 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
 
 export async function getVoterByCin(cin) {
   if (isCloudMode) {
-    const { data: v } = await supabase.from('bdd_mere').select('*').eq('cin', cin).single();
+    const { data: v } = await supabase.from('bdd_mere').select('*').eq('cin', cin).maybeSingle();
     if (!v) return null;
-    const { data: aff } = await supabase.from('affectations_encadrants').select('*').eq('cin', cin).single();
+    const { data: aff } = await supabase.from('affectations_encadrants').select('*').eq('cin', cin).maybeSingle();
     return {
       NUM_ORDRE: v.num_ordre,
       CIN: v.cin,
@@ -556,7 +556,7 @@ export async function verifyBulkAssignments({ cins = [] }) {
 
 export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_pc = 'WEB_USER', overwrite = false }) {
   if (isCloudMode) {
-    const { data: existingAff } = await supabase.from('affectations_encadrants').select('*').eq('cin', cin).single();
+    const { data: existingAff } = await supabase.from('affectations_encadrants').select('*').eq('cin', cin).maybeSingle();
     if (existingAff && !overwrite) {
       return {
         isDuplicate: true,
@@ -565,12 +565,12 @@ export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_
       };
     }
 
-    const { data: voter } = await supabase.from('bdd_mere').select('*').eq('cin', cin).single();
+    const { data: voter } = await supabase.from('bdd_mere').select('*').eq('cin', cin).maybeSingle();
     if (!voter) throw new Error(`Électeur introuvable avec le CIN: ${cin}`);
 
     let phoneToSave = tel;
     if (!phoneToSave) {
-      const { data: encInfo } = await supabase.from('liste_encadrants').select('tel_encadrant').eq('nomencadrant', encadrant).single();
+      const { data: encInfo } = await supabase.from('liste_encadrants').select('tel_encadrant').eq('nomencadrant', encadrant).maybeSingle();
       if (encInfo) phoneToSave = encInfo.tel_encadrant;
     }
 
