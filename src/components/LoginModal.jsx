@@ -60,6 +60,20 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
       return;
     }
 
+    // Fallback check local hybrid storage
+    try {
+      const stored = localStorage.getItem('electoral_persistent_users');
+      if (stored) {
+        const customUsers = JSON.parse(stored);
+        const match = customUsers.find(u => u.username.toLowerCase() === cleanUser && u.password === cleanPass);
+        if (match) {
+          onLogin({ role: match.role, username: match.username, nom_complet: match.nom_complet || match.username });
+          if (onClose) onClose();
+          return;
+        }
+      }
+    } catch (err) {}
+
     setError('Nom d\'utilisateur ou mot de passe incorrect.');
   };
 

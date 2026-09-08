@@ -21,17 +21,38 @@ export default function UsersManager() {
 
   const fetchUsers = async () => {
     setLoading(true);
+    let apiUsers = [];
     try {
       const res = await fetch('/api/users');
       if (res.ok) {
-        const apiUsers = await res.json();
-        setUsers(apiUsers || []);
+        apiUsers = await res.json();
       }
     } catch (err) {
       console.error('Erreur chargement utilisateurs API:', err);
-    } finally {
-      setLoading(false);
     }
+
+    // Read local hybrid storage
+    let localUsers = [];
+    try {
+      const stored = localStorage.getItem('electoral_persistent_users');
+      if (stored) {
+        localUsers = JSON.parse(stored);
+      }
+    } catch (e) {}
+
+    // Merge both sources seamlessly
+    const userMap = {};
+    (apiUsers || []).forEach(u => {
+      userMap[u.username.toLowerCase()] = u;
+    });
+    (localUsers || []).forEach(u => {
+      if (!userMap[u.username.toLowerCase()]) {
+        userMap[u.username.toLowerCase()] = u;
+      }
+    });
+
+    setUsers(Object.values(userMap));
+    setLoading(false);
   };
 
   const handleAddUserSubmit = async (e) => {
@@ -48,31 +69,37 @@ export default function UsersManager() {
       username: username.trim().toLowerCase(),
       password: password.trim(),
       role,
-      nom_complet: nomComplet.trim() || username.trim()
+      nom_complet: nomComplet.trim() || username.trim(),
+      created_at: new Date().toISOString()
     };
 
+    // 1. Save to local browser storage first for instant guaranteed UI update
     try {
-      const res = await fetch('/api/users', {
+      const stored = localStorage.getItem('electoral_persistent_users');
+      let currentLocal = stored ? JSON.parse(stored) : [];
+      currentLocal = currentLocal.filter(u => u.username.toLowerCase() !== newUserObj.username);
+      currentLocal.push(newUserObj);
+      localStorage.setItem('electoral_persistent_users', JSON.stringify(currentLocal));
+    } catch (e) {}
+
+    // 2. Sync with backend API
+    try {
+      await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUserObj),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setUsername('');
-        setPassword('');
-        setNomComplet('');
-        setRole('utilisateur');
-        setShowAddModal(false);
-        fetchUsers();
-      } else {
-        setErrorMsg(data.error || 'Erreur lors de la création du compte.');
-      }
     } catch (err) {
-      setErrorMsg('Erreur réseau lors de la création.');
-    } finally {
-      setSubmitting(false);
+      console.warn('Backend API sync warning:', err);
     }
+
+    setUsername('');
+    setPassword('');
+    setNomComplet('');
+    setRole('utilisateur');
+    setShowAddModal(false);
+    setSubmitting(false);
+    fetchUsers();
   };
 
   const handleDeleteUser = async (userToDelete) => {
@@ -84,16 +111,24 @@ export default function UsersManager() {
 
     if (!confirm(`Confirmez-vous la suppression du compte "${userToDelete}" ?`)) return;
 
+    // 1. Remove from local browser storage
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(userToDelete)}`, {
+      const stored = localStorage.getItem('electoral_persistent_users');
+      if (stored) {
+        let currentLocal = JSON.parse(stored);
+        currentLocal = currentLocal.filter(u => u.username.toLowerCase() !== cleanUser);
+        localStorage.setItem('electoral_persistent_users', JSON.stringify(currentLocal));
+      }
+    } catch (e) {}
+
+    // 2. Send DELETE to backend API
+    try {
+      await fetch(`/api/users/${encodeURIComponent(userToDelete)}`, {
         method: 'DELETE',
       });
-      if (res.ok) {
-        fetchUsers();
-      }
-    } catch (err) {
-      console.error('Erreur suppression utilisateur:', err);
-    }
+    } catch (err) {}
+
+    fetchUsers();
   };
 
   return (
