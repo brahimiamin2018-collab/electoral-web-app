@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User, ShieldCheck } from 'lucide-react';
 
 export default function Header({ activeTab, setActiveTab, stats, userRole, session, onOpenLogin, onLogout }) {
   const allTabs = [
@@ -7,6 +7,7 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
     { id: 'voters', label: 'Recherche Électeurs', icon: Vote, adminOnly: false },
     { id: 'assignments', label: 'Gestion Affectations', icon: UserCheck, adminOnly: true },
     { id: 'encadrants', label: 'Encadrants', icon: Users, adminOnly: true },
+    { id: 'users', label: 'Utilisateurs', icon: ShieldCheck, adminOnly: true },
     { id: 'migration', label: 'Import / Export', icon: Database, adminOnly: true },
   ];
 

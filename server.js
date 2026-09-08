@@ -19,7 +19,11 @@ import {
   assignVoter,
   assignMultipleVoters,
   deleteAssignment,
-  getCommunes
+  getCommunes,
+  loginUser,
+  getUsers,
+  addUser,
+  deleteUser
 } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,6 +41,52 @@ initDb().catch(console.error);
 // ----------------------------------------------------
 // API REST ROUTES
 // ----------------------------------------------------
+
+// User Login Authentication
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await loginUser(username, password);
+    if (!user) {
+      return res.status(401).json({ error: 'Nom d\'utilisateur ou mot de passe incorrect.' });
+    }
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User Management Routes
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await getUsers();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const { username, password, role, nom_complet } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Le nom d\'utilisateur et le mot de passe sont obligatoires.' });
+    }
+    const result = await addUser({ username, password, role, nom_complet });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:username', async (req, res) => {
+  try {
+    await deleteUser(req.params.username);
+    res.json({ success: true, message: 'Utilisateur supprimé avec succès.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Dashboard Statistics
 app.get('/api/stats', async (req, res) => {

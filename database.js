@@ -692,3 +692,103 @@ export async function getCommunes() {
   const rows = await queryLocal(sql);
   return rows.map(r => r.COMMUNE);
 }
+
+// ----------------------------------------------------
+// DYNAMIC USERS & SESSIONS MANAGEMENT
+// ----------------------------------------------------
+
+export async function loginUser(username, password) {
+  const cleanUser = (username || '').trim().toLowerCase();
+  const cleanPass = (password || '').trim();
+
+  if (isCloudMode) {
+    const { data: user } = await supabase.from('utilisateurs').select('*').eq('username', cleanUser).maybeSingle();
+    if (!user) {
+      if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
+        return { username: 'admin', role: 'admin', nom_complet: 'Administrateur Principal' };
+      }
+      if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
+        return { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie' };
+      }
+      return null;
+    }
+    if (user.password !== cleanPass) return null;
+    return { username: user.username, role: user.role, nom_complet: user.nom_complet || user.username };
+  }
+
+  const user = await getLocal(`SELECT * FROM UTILISATEURS WHERE LOWER(USERNAME) = ?`, [cleanUser]);
+  if (!user) {
+    if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
+      return { username: 'admin', role: 'admin', nom_complet: 'Administrateur Principal' };
+    }
+    if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
+      return { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie' };
+    }
+    return null;
+  }
+  if (user.PASSWORD !== cleanPass) return null;
+  return { username: user.USERNAME, role: user.ROLE, nom_complet: user.NOM_COMPLET || user.USERNAME };
+}
+
+export async function getUsers() {
+  if (isCloudMode) {
+    const { data: users } = await supabase.from('utilisateurs').select('*').order('created_at', { ascending: true });
+    if (!users || users.length === 0) {
+      await supabase.from('utilisateurs').upsert([
+        { username: 'admin', password: 'admin123', role: 'admin', nom_complet: 'Administrateur Principal', created_at: new Date().toISOString() },
+        { username: 'user', password: 'user123', role: 'utilisateur', nom_complet: 'Opérateur de Saisie', created_at: new Date().toISOString() }
+      ]);
+      const { data: recheck } = await supabase.from('utilisateurs').select('*').order('created_at', { ascending: true });
+      return recheck || [];
+    }
+    return users.map(u => ({
+      username: u.username,
+      role: u.role,
+      nom_complet: u.nom_complet || u.username,
+      created_at: u.created_at
+    }));
+  }
+
+  const rows = await queryLocal(`SELECT USERNAME as username, ROLE as role, NOM_COMPLET as nom_complet, CREATED_AT as created_at FROM UTILISATEURS ORDER BY CREATED_AT ASC`);
+  if (!rows || rows.length === 0) {
+    await runLocal(`INSERT INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES ('admin', 'admin123', 'admin', 'Administrateur Principal', ?)`, [new Date().toISOString()]);
+    await runLocal(`INSERT INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES ('user', 'user123', 'utilisateur', 'Opérateur de Saisie', ?)`, [new Date().toISOString()]);
+    return await queryLocal(`SELECT USERNAME as username, ROLE as role, NOM_COMPLET as nom_complet, CREATED_AT as created_at FROM UTILISATEURS ORDER BY CREATED_AT ASC`);
+  }
+  return rows;
+}
+
+export async function addUser({ username, password, role = 'utilisateur', nom_complet = '' }) {
+  const cleanUser = username.trim().toLowerCase();
+  if (isCloudMode) {
+    const { error } = await supabase.from('utilisateurs').upsert({
+      username: cleanUser,
+      password: password.trim(),
+      role,
+      nom_complet: nom_complet.trim() || cleanUser,
+      created_at: new Date().toISOString()
+    });
+    if (error) throw new Error(error.message);
+    return { success: true };
+  }
+
+  const sql = `INSERT OR REPLACE INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES (?, ?, ?, ?, ?)`;
+  await runLocal(sql, [cleanUser, password.trim(), role, nom_complet.trim() || cleanUser, new Date().toISOString()]);
+  return { success: true };
+}
+
+export async function deleteUser(username) {
+  const cleanUser = username.trim().toLowerCase();
+  if (cleanUser === 'admin') {
+    throw new Error('Impossible de supprimer le compte administrateur principal.');
+  }
+
+  if (isCloudMode) {
+    const { error } = await supabase.from('utilisateurs').delete().eq('username', cleanUser);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  }
+
+  await runLocal(`DELETE FROM UTILISATEURS WHERE LOWER(USERNAME) = ?`, [cleanUser]);
+  return { success: true };
+}
