@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, UserPlus, Trash2, Shield, User, Key, Check, X, AlertCircle } from 'lucide-react';
+import { ShieldCheck, UserPlus, Trash2, Shield, User, Key, Check, X, AlertCircle, Eye } from 'lucide-react';
 
 export default function UsersManager() {
   const [users, setUsers] = useState([]);
@@ -21,35 +21,17 @@ export default function UsersManager() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    let apiUsers = [];
     try {
       const res = await fetch('/api/users');
       if (res.ok) {
-        apiUsers = await res.json();
+        const apiUsers = await res.json();
+        setUsers(apiUsers || []);
       }
     } catch (err) {
       console.error('Erreur chargement utilisateurs API:', err);
+    } finally {
+      setLoading(false);
     }
-
-    // Merge with local storage custom users
-    let localCustomUsers = [];
-    try {
-      const stored = localStorage.getItem('electoral_custom_users');
-      if (stored) {
-        localCustomUsers = JSON.parse(stored);
-      }
-    } catch (e) {}
-
-    const userMap = {};
-    (apiUsers || []).forEach(u => { userMap[u.username.toLowerCase()] = u; });
-    localCustomUsers.forEach(u => {
-      if (!userMap[u.username.toLowerCase()]) {
-        userMap[u.username.toLowerCase()] = u;
-      }
-    });
-
-    setUsers(Object.values(userMap));
-    setLoading(false);
   };
 
   const handleAddUserSubmit = async (e) => {
@@ -66,34 +48,31 @@ export default function UsersManager() {
       username: username.trim().toLowerCase(),
       password: password.trim(),
       role,
-      nom_complet: nomComplet.trim() || username.trim(),
-      created_at: new Date().toISOString()
+      nom_complet: nomComplet.trim() || username.trim()
     };
 
-    // Save to localStorage
     try {
-      const stored = localStorage.getItem('electoral_custom_users');
-      let customUsers = stored ? JSON.parse(stored) : [];
-      customUsers = customUsers.filter(u => u.username.toLowerCase() !== newUserObj.username);
-      customUsers.push(newUserObj);
-      localStorage.setItem('electoral_custom_users', JSON.stringify(customUsers));
-    } catch (e) {}
-
-    try {
-      await fetch('/api/users', {
+      const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUserObj),
       });
-    } catch (err) {}
-
-    setUsername('');
-    setPassword('');
-    setNomComplet('');
-    setRole('utilisateur');
-    setShowAddModal(false);
-    setSubmitting(false);
-    fetchUsers();
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsername('');
+        setPassword('');
+        setNomComplet('');
+        setRole('utilisateur');
+        setShowAddModal(false);
+        fetchUsers();
+      } else {
+        setErrorMsg(data.error || 'Erreur lors de la création du compte.');
+      }
+    } catch (err) {
+      setErrorMsg('Erreur réseau lors de la création.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDeleteUser = async (userToDelete) => {
@@ -105,23 +84,16 @@ export default function UsersManager() {
 
     if (!confirm(`Confirmez-vous la suppression du compte "${userToDelete}" ?`)) return;
 
-    // Remove from localStorage
     try {
-      const stored = localStorage.getItem('electoral_custom_users');
-      if (stored) {
-        let customUsers = JSON.parse(stored);
-        customUsers = customUsers.filter(u => u.username.toLowerCase() !== cleanUser);
-        localStorage.setItem('electoral_custom_users', JSON.stringify(customUsers));
-      }
-    } catch (e) {}
-
-    try {
-      await fetch(`/api/users/${encodeURIComponent(userToDelete)}`, {
+      const res = await fetch(`/api/users/${encodeURIComponent(userToDelete)}`, {
         method: 'DELETE',
       });
-    } catch (err) {}
-
-    fetchUsers();
+      if (res.ok) {
+        fetchUsers();
+      }
+    } catch (err) {
+      console.error('Erreur suppression utilisateur:', err);
+    }
   };
 
   return (
@@ -158,19 +130,28 @@ export default function UsersManager() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {users.map((u) => {
             const isAdmin = u.role === 'admin';
+            const isVisiteur = u.role === 'visiteur';
             return (
               <div key={u.username} className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4 flex flex-col justify-between hover:border-slate-700 transition">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className={`p-2.5 rounded-xl border ${
-                      isAdmin ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                      isAdmin 
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+                        : isVisiteur 
+                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' 
+                        : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
                     }`}>
-                      {isAdmin ? <Shield className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                      {isAdmin ? <Shield className="w-5 h-5" /> : isVisiteur ? <Eye className="w-5 h-5" /> : <User className="w-5 h-5" />}
                     </span>
                     <span className={`px-3 py-1 font-bold text-xs rounded-full border ${
-                      isAdmin ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                      isAdmin 
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
+                        : isVisiteur 
+                        ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' 
+                        : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
                     }`}>
-                      {isAdmin ? 'Administrateur' : 'Utilisateur'}
+                      {isAdmin ? 'Administrateur' : isVisiteur ? 'Visiteur' : 'Utilisateur'}
                     </span>
                   </div>
 
@@ -180,7 +161,9 @@ export default function UsersManager() {
                   </div>
 
                   <div className="text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                    <div>Rôle: <strong className="text-slate-200">{isAdmin ? 'Accès complet (Admin)' : 'Recherche & Affectation'}</strong></div>
+                    <div>Rôle: <strong className="text-slate-200">
+                      {isAdmin ? 'Accès complet (Admin)' : isVisiteur ? 'Consultation seule (Visiteur)' : 'Recherche & Affectation (Opérateur)'}
+                    </strong></div>
                     {u.created_at && (
                       <div className="text-[11px] text-slate-500">Créé le : {u.created_at.substring(0, 10)}</div>
                     )}
@@ -275,6 +258,7 @@ export default function UsersManager() {
                   className="w-full px-4 py-3 glass-input rounded-xl text-sm bg-slate-900 text-white font-semibold"
                 >
                   <option value="utilisateur">👤 Utilisateur (Recherche & Affectation uniquement)</option>
+                  <option value="visiteur">👁️ Visiteur (Consultation seule, sans modification)</option>
                   <option value="admin">👑 Administrateur (Accès complet à toutes les fonctions)</option>
                 </select>
               </div>

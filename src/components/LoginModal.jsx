@@ -60,20 +60,6 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
       return;
     }
 
-    // Fallback check custom users saved in localStorage
-    try {
-      const stored = localStorage.getItem('electoral_custom_users');
-      if (stored) {
-        const customUsers = JSON.parse(stored);
-        const match = customUsers.find(u => u.username.toLowerCase() === cleanUser && u.password === cleanPass);
-        if (match) {
-          onLogin({ role: match.role, username: match.username, nom_complet: match.nom_complet || match.username });
-          if (onClose) onClose();
-          return;
-        }
-      }
-    } catch (err) {}
-
     setError('Nom d\'utilisateur ou mot de passe incorrect.');
   };
 
@@ -111,7 +97,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Tapez admin ou user..."
+                placeholder="Entrez votre identifiant..."
                 className="w-full pl-10 pr-4 py-3 glass-input rounded-xl text-sm"
                 required
                 autoFocus
@@ -127,42 +113,29 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Tapez admin123 ou user123..."
+                placeholder="Entrez votre mot de passe..."
                 className="w-full pl-10 pr-4 py-3 glass-input rounded-xl text-sm"
                 required
               />
             </div>
           </div>
 
-          <div className="pt-2 flex flex-col space-y-2">
-            <div className="flex items-center justify-end space-x-3">
-              {!isLocked && onClose && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-xs font-medium"
-                >
-                  Annuler
-                </button>
-              )}
+          <div className="pt-2 flex items-center justify-end space-x-3">
+            {!isLocked && onClose && (
               <button
-                type="submit"
-                className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-bold shadow-lg shadow-sky-500/20 flex items-center justify-center space-x-2 transition transform hover:scale-[1.02]"
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-xs font-medium"
               >
-                <span>Ouvrir la Session</span>
-                <ArrowRight className="w-4 h-4" />
+                Annuler
               </button>
-            </div>
-
+            )}
             <button
-              type="button"
-              onClick={() => {
-                onLogin({ role: 'visiteur', username: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)' });
-                if (onClose) onClose();
-              }}
-              className="w-full py-2.5 px-4 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/40 text-purple-300 font-semibold text-xs transition text-center"
+              type="submit"
+              className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-bold shadow-lg shadow-sky-500/20 flex items-center justify-center space-x-2 transition transform hover:scale-[1.02]"
             >
-              👁️ Accès Visiteur (Consultation seule sans modification)
+              <span>Ouvrir la Session</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
