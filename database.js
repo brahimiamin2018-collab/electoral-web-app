@@ -131,7 +131,11 @@ export async function getStats() {
   if (isCloudMode) {
     const { count: totalVoters } = await supabase.from('bdd_mere').select('*', { count: 'exact', head: true });
     const { count: totalAssignments } = await supabase.from('affectations_encadrants').select('*', { count: 'exact', head: true });
-    const { count: totalEncadrants } = await supabase.from('liste_encadrants').select('*', { count: 'exact', head: true });
+    
+    const { data: regEncData } = await supabase.from('liste_encadrants').select('nomencadrant');
+    const validEncs = (regEncData || []).map(e => e.nomencadrant).filter(n => n && !n.startsWith('__USER__:'));
+    const validSet = new Set(validEncs);
+    const totalEncadrants = validEncs.length;
 
     const { data: topEncadrantsData } = await supabase.from('affectations_encadrants').select('encadrant');
     
@@ -139,7 +143,7 @@ export async function getStats() {
     if (topEncadrantsData) {
       topEncadrantsData.forEach(row => {
         const nom = row.encadrant;
-        if (nom) encCounts[nom] = (encCounts[nom] || 0) + 1;
+        if (nom && validSet.has(nom)) encCounts[nom] = (encCounts[nom] || 0) + 1;
       });
     }
     const topEncadrants = Object.keys(encCounts)
@@ -152,7 +156,7 @@ export async function getStats() {
     return {
       totalVoters: totalVoters || 0,
       totalAssignments: totalAssignments || 0,
-      totalEncadrants: totalEncadrants || 0,
+      totalEncadrants,
       assignmentRate,
       topEncadrants,
       statsByCommune: []
@@ -161,12 +165,14 @@ export async function getStats() {
 
   const totalVotersRow = await getLocal(`SELECT COUNT(*) as count FROM BDD_MERE`);
   const totalAssignmentsRow = await getLocal(`SELECT COUNT(*) as count FROM AFFECTATIONS_ENCADRANTS`);
-  const totalEncadrantsRow = await getLocal(`SELECT COUNT(*) as count FROM LISTE_ENCADRANTS`);
+  const totalEncadrantsRow = await getLocal(`SELECT COUNT(*) as count FROM LISTE_ENCADRANTS WHERE NomEncadrant NOT LIKE '__USER__:%'`);
 
   const topEncadrants = await queryLocal(`
-    SELECT ENCADRANT as nom, COUNT(*) as count 
-    FROM AFFECTATIONS_ENCADRANTS 
-    GROUP BY ENCADRANT 
+    SELECT a.ENCADRANT as nom, COUNT(*) as count 
+    FROM AFFECTATIONS_ENCADRANTS a
+    INNER JOIN LISTE_ENCADRANTS e ON a.ENCADRANT = e.NomEncadrant
+    WHERE e.NomEncadrant NOT LIKE '__USER__:%'
+    GROUP BY a.ENCADRANT 
     ORDER BY count DESC 
     LIMIT 10
   `);
@@ -605,6 +611,11 @@ export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_
     });
 
     if (error) throw new Error(error.message);
+
+    if (encadrant) {
+      await supabase.from('liste_encadrants').upsert({ nomencadrant: encadrant, tel_encadrant: phoneToSave || '' });
+    }
+
     return { success: true, cin, encadrant, date: dateNow };
   }
 
@@ -651,6 +662,10 @@ export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_
     nom_pc,
     dateNow
   ]);
+
+  if (encadrant) {
+    await runLocal(`INSERT OR IGNORE INTO LISTE_ENCADRANTS (NomEncadrant, TEL_ENCADRANT) VALUES (?, ?)`, [encadrant, phoneToSave || '']);
+  }
 
   return { success: true, cin, encadrant, date: dateNow };
 }
