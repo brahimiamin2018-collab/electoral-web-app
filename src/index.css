@@ -55,27 +55,25 @@
   background: rgba(148, 163, 184, 0.4);
 }
 
-/* Print Specific Rules - Elimination Total des Marges et Espaces en Haut */
+/* Print Specific Rules - Elimination Total des Marges et Pages Vides */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 4mm 4mm 4mm 4mm;
+    margin: 5mm;
   }
 
-  /* 1. Neutralize all containing blocks (filters, backdrops, transforms, containing elements) */
-  *, *::before, *::after {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    transform: none !important;
-    filter: none !important;
-    perspective: none !important;
-    contain: none !important;
-    box-shadow: none !important;
-    animation: none !important;
-    transition: none !important;
+  /* 1. Completely collapse #root and all main UI components during print */
+  #root,
+  .print\:hidden {
+    display: none !important;
   }
 
-  /* 2. Reset html & body to white background, zero margin/padding */
+  /* 2. Hide all body children EXCEPT #printable-encadrant-sheet */
+  body > *:not(#printable-encadrant-sheet) {
+    display: none !important;
+  }
+
+  /* 3. Reset html and body */
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
@@ -89,67 +87,25 @@
     print-color-adjust: exact !important;
   }
 
-  /* 3. Hide all non-printable elements */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* 4. Completely flatten parent containers of printable sheets */
-  #root,
-  #root > div,
-  header,
-  nav,
-  main,
-  footer,
-  .fixed,
-  .backdrop-blur-md,
-  .glass-panel {
-    position: static !important;
-    display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    overflow: visible !important;
-    flex: none !important;
-    align-items: stretch !important;
-    justify-content: flex-start !important;
-  }
-
-  /* 5. Make printable sheet visible & force absolute top 0 */
-  #printable-encadrant-sheet,
-  #printable-encadrant-sheet * {
-    visibility: visible !important;
-  }
-
+  /* 4. Display ONLY #printable-encadrant-sheet starting at top 0 */
   #printable-encadrant-sheet {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
+    display: block !important;
+    position: static !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
-    box-shadow: none !important;
-    border: none !important;
-    overflow: visible !important;
-    z-index: 999999 !important;
   }
 
-  /* Force table formatting for clean A4 printing */
+  #printable-encadrant-sheet * {
+    visibility: visible !important;
+  }
+
   #printable-encadrant-sheet table {
     width: 100% !important;
     border-collapse: collapse !important;
-    margin-top: 5px !important;
+    margin-top: 6px !important;
   }
 
   #printable-encadrant-sheet th,
