@@ -13,7 +13,7 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
 
   // Filter tabs by role
   const visibleTabs = allTabs.filter(tab => {
-    if (userRole === 'utilisateur') return tab.id === 'voters';
+    if (userRole === 'utilisateur') return tab.id === 'voters' || tab.id === 'encadrants' || tab.id === 'assignments';
     if (userRole === 'visiteur') return tab.id !== 'users';
     return true;
   });

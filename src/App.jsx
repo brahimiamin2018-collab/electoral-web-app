@@ -149,7 +149,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'assignments' && (userRole === 'admin' || userRole === 'visiteur') && (
+        {activeTab === 'assignments' && (userRole === 'admin' || userRole === 'utilisateur' || userRole === 'visiteur') && (
           <Assignments
             isVisiteur={isReadOnly}
             encadrants={encadrants}
@@ -158,7 +158,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'encadrants' && (userRole === 'admin' || userRole === 'visiteur') && (
+        {activeTab === 'encadrants' && (userRole === 'admin' || userRole === 'utilisateur' || userRole === 'visiteur') && (
           <EncadrantsManager
             isVisiteur={isReadOnly}
             encadrants={encadrants}

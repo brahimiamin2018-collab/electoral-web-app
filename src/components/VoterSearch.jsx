@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2 } from 'lucide-react';
+import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2, UserPlus } from 'lucide-react';
 
 export default function VoterSearch({ session, isVisiteur, encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
@@ -23,6 +23,12 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
   const [telEncadrant, setTelEncadrant] = useState('');
   const [forceOverwrite, setForceOverwrite] = useState(false);
+
+  // Inline New Encadrant state
+  const [showInlineNewEncadrant, setShowInlineNewEncadrant] = useState(false);
+  const [newEncadrantNom, setNewEncadrantNom] = useState('');
+  const [newEncadrantTel, setNewEncadrantTel] = useState('');
+  const [addingEncadrant, setAddingEncadrant] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
@@ -217,6 +223,36 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleAddNewEncadrant = async (e) => {
+    if (e) e.preventDefault();
+    if (!newEncadrantNom.trim()) return;
+    setAddingEncadrant(true);
+    try {
+      const res = await fetch('/api/encadrants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: newEncadrantNom.trim(), tel: newEncadrantTel.trim() })
+      });
+      if (res.ok) {
+        const addedNom = newEncadrantNom.trim();
+        const addedTel = newEncadrantTel.trim();
+        setNewEncadrantNom('');
+        setNewEncadrantTel('');
+        setShowInlineNewEncadrant(false);
+        if (onAssignmentChange) await onAssignmentChange();
+        setSelectedEncadrant(addedNom);
+        setTelEncadrant(addedTel);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erreur d'ajout encadrant");
+      }
+    } catch (err) {
+      alert("Erreur réseau lors de l'ajout d'encadrant");
+    } finally {
+      setAddingEncadrant(false);
     }
   };
 
@@ -567,9 +603,55 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
               <form id="assignForm" onSubmit={(e) => handleAssignSubmit(e, false)} className="space-y-4 pt-2">
                 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">
-                    Sélectionnez l'Encadrant Responsable:
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Sélectionnez l'Encadrant Responsable:
+                    </label>
+                    {!isVisiteur && (
+                      <button
+                        type="button"
+                        onClick={() => setShowInlineNewEncadrant(!showInlineNewEncadrant)}
+                        className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center space-x-1"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>{showInlineNewEncadrant ? 'Fermer' : '+ Nouveau Encadrant'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {showInlineNewEncadrant && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5 my-2">
+                      <p className="text-xs font-bold text-amber-300 flex items-center space-x-1">
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Créer un Nouveau Encadrant</span>
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nom de l'encadrant..."
+                          value={newEncadrantNom}
+                          onChange={(e) => setNewEncadrantNom(e.target.value)}
+                          className="px-3 py-1.5 glass-input rounded-lg text-xs"
+                        />
+                        <input
+                          type="text"
+                          placeholder="N° Téléphone..."
+                          value={newEncadrantTel}
+                          onChange={(e) => setNewEncadrantTel(e.target.value)}
+                          className="px-3 py-1.5 glass-input rounded-lg text-xs"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddNewEncadrant}
+                        disabled={addingEncadrant || !newEncadrantNom.trim()}
+                        className="w-full py-1.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-lg hover:bg-amber-400 disabled:opacity-50 transition"
+                      >
+                        {addingEncadrant ? 'Création...' : 'Créer et Sélectionner cet Encadrant'}
+                      </button>
+                    </div>
+                  )}
+
                   <select
                     value={selectedEncadrant}
                     onChange={(e) => handleEncadrantSelect(e.target.value)}
