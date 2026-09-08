@@ -10,8 +10,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, 'electoral.db');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Default fallback to user's Supabase Cloud project
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xrqypbrgnuxtsebtzzyt.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhycXlwYnJnbnV4dHNlYnR6enl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MTYxNjksImV4cCI6MjEwNDM5MjE2OX0.y3-Dsajs8Prir0Q461YXpqdx1dvpovuerBHTl-4e6NU';
 
 const isCloudMode = !!(SUPABASE_URL && SUPABASE_KEY);
 
@@ -467,7 +468,6 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', lim
   };
 }
 
-// Verification function for bulk pre-assignment anti-duplicate check
 export async function verifyBulkAssignments({ cins = [] }) {
   if (!cins || cins.length === 0) {
     return { total: 0, cleanVoters: [], duplicateVoters: [] };
@@ -505,7 +505,6 @@ export async function verifyBulkAssignments({ cins = [] }) {
     });
 
   } else {
-    // SQLite Mode
     const placeholders = cins.map(() => '?').join(',');
     const sql = `
       SELECT b.CIN, b.NOM, b.PRENOM, b.COMMUNE, b.LIEU_BUREAU_VOTE, b.NOM_BUREAU_VOTE,
@@ -587,7 +586,6 @@ export async function assignVoter({ cin, encadrant, tel, tel_electeur = '', nom_
     return { success: true, cin, encadrant, date: dateNow };
   }
 
-  // SQLite Mode
   const existingAff = await getLocal(`SELECT * FROM AFFECTATIONS_ENCADRANTS WHERE CIN = ?`, [cin]);
   if (existingAff && !overwrite) {
     return {
