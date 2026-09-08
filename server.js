@@ -19,6 +19,8 @@ import {
   assignVoter,
   assignMultipleVoters,
   deleteAssignment,
+  deleteMultipleAssignments,
+  deleteAssignmentsByEncadrant,
   getCommunes,
   loginUser,
   getUsers,
@@ -220,11 +222,35 @@ app.post('/api/assignments/bulk', async (req, res) => {
   }
 });
 
-// Delete / Cancel Assignment
+// Delete / Cancel Single Assignment
 app.delete('/api/assignments/:cin', async (req, res) => {
   try {
     await deleteAssignment(req.params.cin);
     res.json({ success: true, message: 'Affectation annulée.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bulk Delete / Cancel Multiple Assignments
+app.post('/api/assignments/delete-bulk', async (req, res) => {
+  try {
+    const { cins } = req.body;
+    if (!cins || !Array.isArray(cins) || cins.length === 0) {
+      return res.status(400).json({ error: 'Liste de CINs requise.' });
+    }
+    const result = await deleteMultipleAssignments({ cins });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cancel All Assignments for a Specific Encadrant
+app.delete('/api/assignments/encadrant/:encadrant', async (req, res) => {
+  try {
+    const result = await deleteAssignmentsByEncadrant(req.params.encadrant);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

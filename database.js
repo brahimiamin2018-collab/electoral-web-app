@@ -678,6 +678,31 @@ export async function deleteAssignment(cin) {
   return await runLocal(sql, [cin]);
 }
 
+export async function deleteMultipleAssignments({ cins = [] }) {
+  if (!cins || cins.length === 0) return { success: true, count: 0 };
+  if (isCloudMode) {
+    const { error } = await supabase.from('affectations_encadrants').delete().in('cin', cins);
+    if (error) throw new Error(error.message);
+    return { success: true, count: cins.length };
+  }
+  const placeholders = cins.map(() => '?').join(',');
+  const sql = `DELETE FROM AFFECTATIONS_ENCADRANTS WHERE CIN IN (${placeholders})`;
+  await runLocal(sql, cins);
+  return { success: true, count: cins.length };
+}
+
+export async function deleteAssignmentsByEncadrant(encadrant) {
+  if (!encadrant) return { success: true, count: 0 };
+  if (isCloudMode) {
+    const { error } = await supabase.from('affectations_encadrants').delete().ilike('encadrant', encadrant.trim());
+    if (error) throw new Error(error.message);
+    return { success: true };
+  }
+  const sql = `DELETE FROM AFFECTATIONS_ENCADRANTS WHERE LOWER(ENCADRANT) = ?`;
+  await runLocal(sql, [encadrant.trim().toLowerCase()]);
+  return { success: true };
+}
+
 export async function getCommunes() {
   if (isCloudMode) {
     try {

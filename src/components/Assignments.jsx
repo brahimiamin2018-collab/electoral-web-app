@@ -13,8 +13,11 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
   const [selectedCommune, setSelectedCommune] = useState('');
   const [query, setQuery] = useState('');
 
+  const [selectedCins, setSelectedCins] = useState([]);
+
   useEffect(() => {
     fetchAssignments();
+    setSelectedCins([]);
   }, [selectedEncadrant, selectedCommune, query]);
 
   const fetchAssignments = async () => {
@@ -24,7 +27,7 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
       if (selectedEncadrant) params.append('encadrant', selectedEncadrant);
       if (selectedCommune) params.append('commune', selectedCommune);
       if (query) params.append('q', query);
-      params.append('limit', '200');
+      params.append('limit', '500');
 
       const res = await fetch(`/api/assignments?${params.toString()}`);
       const data = await res.json();
@@ -37,11 +40,58 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
     }
   };
 
+  const toggleSelectAll = () => {
+    if (selectedCins.length === assignments.length) {
+      setSelectedCins([]);
+    } else {
+      setSelectedCins(assignments.map(a => a.CIN));
+    }
+  };
+
+  const toggleSelectCin = (cin) => {
+    setSelectedCins(prev => prev.includes(cin) ? prev.filter(c => c !== cin) : [...prev, cin]);
+  };
+
   const handleDeleteAssignment = async (cin, name) => {
     if (!confirm(`Confirmez-vous la suppression de l'affectation de ${name} (${cin}) ?`)) return;
     try {
       const res = await fetch(`/api/assignments/${cin}`, { method: 'DELETE' });
       if (res.ok) {
+        setSelectedCins(prev => prev.filter(c => c !== cin));
+        fetchAssignments();
+        if (onAssignmentChange) onAssignmentChange();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCancelBulkAssignments = async () => {
+    if (selectedCins.length === 0) return;
+    if (!confirm(`Voulez-vous vraiment annuler l'affectation de ces ${selectedCins.length} électeurs sélectionnés ?`)) return;
+    try {
+      const res = await fetch('/api/assignments/delete-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cins: selectedCins })
+      });
+      if (res.ok) {
+        setSelectedCins([]);
+        fetchAssignments();
+        if (onAssignmentChange) onAssignmentChange();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCancelEncadrantAssignments = async (encName) => {
+    if (!encName) return;
+    if (!confirm(`ATTENTION : Voulez-vous vraiment annuler TOUTES les affectations attribuées à l'encadrant "${encName}" ?`)) return;
+    try {
+      const res = await fetch(`/api/assignments/encadrant/${encodeURIComponent(encName)}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSelectedCins([]);
         fetchAssignments();
         if (onAssignmentChange) onAssignmentChange();
       }
@@ -61,11 +111,33 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
               <UserCheck className="w-5 h-5 text-emerald-400" />
               <span>Gestion des Affectations</span>
             </h2>
-            <p className="text-xs text-slate-400">Consultation et filtrage des électeurs attribués aux encadrants ({total} au total).</p>
+            <p className="text-xs text-slate-400">Consultation, suppression en masse et annulation par encadrant ({total} au total).</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             
+            {/* Cancel Selected Bulk Button */}
+            {selectedCins.length > 0 && (
+              <button
+                onClick={handleCancelBulkAssignments}
+                className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition animate-fade-in"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Annuler l'affectation ({selectedCins.length})</span>
+              </button>
+            )}
+
+            {/* Cancel Encadrant Assignments Button */}
+            {selectedEncadrant && (
+              <button
+                onClick={() => handleCancelEncadrantAssignments(selectedEncadrant)}
+                className="flex items-center space-x-2 px-4 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold transition"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Annuler les attribués de {selectedEncadrant}</span>
+              </button>
+            )}
+
             {/* Print Sheet per Encadrant Button */}
             <button
               onClick={() => setShowPrintModal(true)}
@@ -152,48 +224,59 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
           <>
             {/* Mobile View: Cards */}
             <div className="md:hidden p-4 space-y-4">
-              {assignments.map((item) => (
-                <div key={item.CIN} className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3 shadow-md">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-sky-400 text-xs bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
-                      CIN: {item.CIN}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
-                      className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                      title="Annuler cette affectation"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-white text-base">{item.PRENOM} {item.NOM}</h4>
-                    {item.NUM_ORDRE && <span className="text-[11px] text-slate-500 font-mono">N° {item.NUM_ORDRE}</span>}
-                  </div>
-
-                  <div className="text-xs text-slate-400 space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
-                    <div>Commune: <strong className="text-slate-200">{item.COMMUNE || 'N/C'}</strong></div>
-                    <div>Bureau: <strong className="text-slate-200">{item.LIEU_BUREAU_VOTE || 'N/C'}</strong></div>
-                  </div>
-
-                  <div className="flex items-center justify-between bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/20 text-xs">
-                    <div>
-                      <div className="text-[10px] text-slate-400">Encadrant Affecté :</div>
-                      <div className="font-bold text-emerald-400">{item.ENCADRANT}</div>
-                    </div>
-                    {item.TEL && (
-                      <a
-                        href={`tel:${item.TEL}`}
-                        className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs"
+              {assignments.map((item) => {
+                const isChecked = selectedCins.includes(item.CIN);
+                return (
+                  <div key={item.CIN} className={`bg-slate-900/90 border rounded-xl p-4 space-y-3 shadow-md ${isChecked ? 'border-sky-500 bg-sky-950/20' : 'border-slate-800'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelectCin(item.CIN)}
+                          className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
+                        />
+                        <span className="font-mono font-bold text-sky-400 text-xs bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+                          CIN: {item.CIN}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
+                        className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                        title="Annuler cette affectation"
                       >
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>Appeler</span>
-                      </a>
-                    )}
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-white text-base">{item.PRENOM} {item.NOM}</h4>
+                      {item.NUM_ORDRE && <span className="text-[11px] text-slate-500 font-mono">N° {item.NUM_ORDRE}</span>}
+                    </div>
+
+                    <div className="text-xs text-slate-400 space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
+                      <div>Commune: <strong className="text-slate-200">{item.COMMUNE || 'N/C'}</strong></div>
+                      <div>Bureau: <strong className="text-slate-200">{item.LIEU_BUREAU_VOTE || 'N/C'}</strong></div>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/20 text-xs">
+                      <div>
+                        <div className="text-[10px] text-slate-400">Encadrant Affecté :</div>
+                        <div className="font-bold text-emerald-400">{item.ENCADRANT}</div>
+                      </div>
+                      {item.TEL && (
+                        <a
+                          href={`tel:${item.TEL}`}
+                          className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Appeler</span>
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Desktop View: Table */}
@@ -201,6 +284,15 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/90 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                   <tr>
+                    <th className="px-4 py-4 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={assignments.length > 0 && selectedCins.length === assignments.length}
+                        onChange={toggleSelectAll}
+                        className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
+                        title="Tout sélectionner / Tout décocher"
+                      />
+                    </th>
                     <th className="px-6 py-4">CIN</th>
                     <th className="px-6 py-4">Électeur</th>
                     <th className="px-6 py-4">Commune</th>
@@ -211,44 +303,55 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {assignments.map((item) => (
-                    <tr key={item.CIN} className="hover:bg-slate-900/40 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-sky-400">
-                        {item.CIN}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-white">{item.PRENOM} {item.NOM}</div>
-                        {item.NUM_ORDRE && <div className="text-xs text-slate-500 font-mono">N° {item.NUM_ORDRE}</div>}
-                      </td>
-                      <td className="px-6 py-4 text-slate-300">
-                        {item.COMMUNE || 'N/C'}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-400 max-w-xs truncate">
-                        {item.LIEU_BUREAU_VOTE || 'N/C'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-emerald-400">{item.ENCADRANT}</div>
-                        {item.TEL && (
-                          <a href={`tel:${item.TEL}`} className="text-xs text-slate-300 font-semibold flex items-center gap-1 mt-0.5 hover:text-sky-400">
-                            <Phone className="w-3 h-3 text-sky-400" />
-                            <span>{item.TEL}</span>
-                          </a>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-400">
-                        {item.DATE_INSCRIPTION ? item.DATE_INSCRIPTION.substring(0, 16) : 'N/C'}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
-                          className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                          title="Annuler cette affectation"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {assignments.map((item) => {
+                    const isChecked = selectedCins.includes(item.CIN);
+                    return (
+                      <tr key={item.CIN} className={`transition-colors ${isChecked ? 'bg-sky-950/20' : 'hover:bg-slate-900/40'}`}>
+                        <td className="px-4 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelectCin(item.CIN)}
+                            className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-6 py-4 font-mono font-bold text-sky-400">
+                          {item.CIN}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-white">{item.PRENOM} {item.NOM}</div>
+                          {item.NUM_ORDRE && <div className="text-xs text-slate-500 font-mono">N° {item.NUM_ORDRE}</div>}
+                        </td>
+                        <td className="px-6 py-4 text-slate-300">
+                          {item.COMMUNE || 'N/C'}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-slate-400 max-w-xs truncate">
+                          {item.LIEU_BUREAU_VOTE || 'N/C'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-emerald-400">{item.ENCADRANT}</div>
+                          {item.TEL && (
+                            <a href={`tel:${item.TEL}`} className="text-xs text-slate-300 font-semibold flex items-center gap-1 mt-0.5 hover:text-sky-400">
+                              <Phone className="w-3 h-3 text-sky-400" />
+                              <span>{item.TEL}</span>
+                            </a>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-slate-400">
+                          {item.DATE_INSCRIPTION ? item.DATE_INSCRIPTION.substring(0, 16) : 'N/C'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
+                            className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                            title="Annuler cette affectation"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

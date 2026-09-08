@@ -114,7 +114,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                     <th className="p-2 text-center w-8">N°</th>
                     <th className="p-2">CIN</th>
                     <th className="p-2">Nom & Prénom</th>
-                    <th className="p-2">Téléphone Électeur</th>
                     <th className="p-2">Commune</th>
                     <th className="p-2">Bureau / Lieu de Vote</th>
                     <th className="p-2 text-center w-28 border-l border-slate-700">Émargement</th>
@@ -126,7 +125,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                       <td className="p-2 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
                       <td className="p-2 font-mono font-bold text-slate-900">{item.CIN}</td>
                       <td className="p-2 font-bold text-slate-900">{item.PRENOM} {item.NOM}</td>
-                      <td className="p-2 font-mono font-bold text-slate-800">{item.TEL_ELECTEUR || item.TEL || 'N/C'}</td>
                       <td className="p-2 text-slate-700">{item.COMMUNE || 'N/C'}</td>
                       <td className="p-2 text-slate-700">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
                       <td className="p-2 border-l border-slate-300 text-center"></td>
@@ -164,7 +162,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                 <th className="p-2 text-center w-8">N°</th>
                 <th className="p-2">CIN</th>
                 <th className="p-2">Nom & Prénom</th>
-                <th className="p-2">Téléphone Électeur</th>
                 <th className="p-2">Commune</th>
                 <th className="p-2">Bureau / Lieu de Vote</th>
                 <th className="p-2 text-center w-28 border-l border-slate-700">Émargement</th>
@@ -176,7 +173,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                   <td className="p-2 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
                   <td className="p-2 font-mono font-bold text-slate-900">{item.CIN}</td>
                   <td className="p-2 font-bold text-slate-900">{item.PRENOM} {item.NOM}</td>
-                  <td className="p-2 font-mono font-bold text-slate-800">{item.TEL_ELECTEUR || item.TEL || 'N/C'}</td>
                   <td className="p-2 text-slate-700">{item.COMMUNE || 'N/C'}</td>
                   <td className="p-2 text-slate-700">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
                   <td className="p-2 border-l border-slate-300 text-center"></td>

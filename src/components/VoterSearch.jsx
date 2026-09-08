@@ -442,49 +442,16 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                       <span className="line-clamp-2">Bureau: <strong className="text-slate-300">{voter.LIEU_BUREAU_VOTE || voter.NOM_BUREAU_VOTE || 'N/C'}</strong></span>
                     </div>
                   </div>
-
-                  {isAssigned && (
-                    <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
-                      <div className="text-sky-400 font-semibold flex items-center gap-1">
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>Attribué à l'encadrant :</span>
-                      </div>
-                      <div className="font-bold text-white text-sm flex items-center justify-between">
-                        <span>{voter.affecte_encadrant}</span>
-                        {voter.affecte_tel && (
-                          <span className="text-slate-300 font-normal flex items-center text-xs">
-                            <Phone className="w-3 h-3 mr-1 text-slate-400" />
-                            {voter.affecte_tel}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                 </div>
 
                 <div className="pt-4 border-t border-slate-800 mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => handleOpenAssignModal(voter)}
-                    className={`w-full py-2 px-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center space-x-1.5 ${
-                      isAssigned 
-                        ? 'bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30' 
-                        : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-md shadow-sky-500/20'
-                    }`}
+                    className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-md shadow-sky-500/20 flex items-center justify-center space-x-1.5 transition transform hover:scale-[1.02]"
                   >
-                    <UserCheck className="w-3.5 h-3.5" />
-                    <span>{isAssigned ? 'Réaffecter' : 'Affecter'}</span>
+                    <UserCheck className="w-4 h-4" />
+                    <span>Affecter</span>
                   </button>
-
-                  {isAssigned && (
-                    <button
-                      onClick={() => handleCancelAssignment(voter.CIN)}
-                      title="Annuler l'affectation"
-                      className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
 
               </div>
