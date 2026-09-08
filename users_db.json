@@ -1,0 +1,23 @@
+[
+  {
+    "username": "admin",
+    "password": "admin123",
+    "role": "admin",
+    "nom_complet": "Administrateur Principal",
+    "created_at": "2026-09-08T14:24:04.766Z"
+  },
+  {
+    "username": "user",
+    "password": "user123",
+    "role": "utilisateur",
+    "nom_complet": "Opérateur de Saisie",
+    "created_at": "2026-09-08T14:24:04.767Z"
+  },
+  {
+    "username": "visiteur",
+    "password": "visiteur123",
+    "role": "visiteur",
+    "nom_complet": "Compte Visiteur (Lecture seule)",
+    "created_at": "2026-09-08T14:24:04.767Z"
+  }
+]

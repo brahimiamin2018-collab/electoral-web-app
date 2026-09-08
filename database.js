@@ -833,29 +833,36 @@ export async function loginUser(username, password) {
 
 export async function getUsers() {
   const localList = getPersistentUsersList();
+  const userMap = {};
 
+  // 1. First load from local persistent storage (users_db.json + default accounts)
+  localList.forEach(u => {
+    userMap[u.username.toLowerCase()] = {
+      username: u.username,
+      role: u.role,
+      nom_complet: u.nom_complet || u.username,
+      created_at: u.created_at || new Date().toISOString()
+    };
+  });
+
+  // 2. Merge with Supabase Cloud users if accessible
   if (isCloudMode) {
     try {
-      const { data: users, error } = await supabase.from('utilisateurs').select('*').order('created_at', { ascending: true });
-      if (!error && users && users.length > 0) {
-        const cloudMap = {};
-        users.forEach(u => { cloudMap[u.username.toLowerCase()] = u; });
-        localList.forEach(u => {
-          if (!cloudMap[u.username.toLowerCase()]) {
-            cloudMap[u.username.toLowerCase()] = u;
-          }
+      const { data: cloudUsers, error } = await supabase.from('utilisateurs').select('*');
+      if (!error && Array.isArray(cloudUsers) && cloudUsers.length > 0) {
+        cloudUsers.forEach(u => {
+          userMap[u.username.toLowerCase()] = {
+            username: u.username,
+            role: u.role,
+            nom_complet: u.nom_complet || u.username,
+            created_at: u.created_at || new Date().toISOString()
+          };
         });
-        return Object.values(cloudMap);
       }
     } catch (e) {}
   }
 
-  return localList.map(u => ({
-    username: u.username,
-    role: u.role,
-    nom_complet: u.nom_complet || u.username,
-    created_at: u.created_at
-  }));
+  return Object.values(userMap);
 }
 
 export async function addUser({ username, password, role = 'utilisateur', nom_complet = '' }) {
@@ -868,18 +875,21 @@ export async function addUser({ username, password, role = 'utilisateur', nom_co
     created_at: new Date().toISOString()
   };
 
+  // Always save locally to users_db.json first
   savePersistentUserObj(newUserObj);
 
+  // Sync to Cloud Supabase if available
   if (isCloudMode) {
     try {
       await supabase.from('utilisateurs').upsert(newUserObj);
     } catch (e) {}
-  } else {
-    try {
-      const sql = `INSERT OR REPLACE INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES (?, ?, ?, ?, ?)`;
-      await runLocal(sql, [cleanUser, password.trim(), role, nom_complet.trim() || cleanUser, new Date().toISOString()]);
-    } catch (e) {}
   }
+
+  // Sync to local SQLite table
+  try {
+    const sql = `INSERT OR REPLACE INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES (?, ?, ?, ?, ?)`;
+    await runLocal(sql, [cleanUser, password.trim(), role, nom_complet.trim() || cleanUser, new Date().toISOString()]);
+  } catch (e) {}
 
   return { success: true };
 }
