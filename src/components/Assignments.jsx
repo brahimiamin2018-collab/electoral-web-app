@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserCheck, Search, Filter, Download, Trash2, Phone, Printer, FileText } from 'lucide-react';
 import PrintEncadrantSheet from './PrintEncadrantSheet';
 
-export default function Assignments({ encadrants, communes, onAssignmentChange }) {
+export default function Assignments({ isVisiteur, encadrants, communes, onAssignmentChange }) {
   const [assignments, setAssignments] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -117,7 +117,7 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
           <div className="flex flex-wrap items-center gap-3">
             
             {/* Cancel Selected Bulk Button */}
-            {selectedCins.length > 0 && (
+            {selectedCins.length > 0 && !isVisiteur && (
               <button
                 onClick={handleCancelBulkAssignments}
                 className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition animate-fade-in"
@@ -128,7 +128,7 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
             )}
 
             {/* Cancel Encadrant Assignments Button */}
-            {selectedEncadrant && (
+            {selectedEncadrant && !isVisiteur && (
               <button
                 onClick={() => handleCancelEncadrantAssignments(selectedEncadrant)}
                 className="flex items-center space-x-2 px-4 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold transition"
@@ -285,15 +285,17 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/90 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                   <tr>
-                    <th className="px-4 py-4 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={assignments.length > 0 && selectedCins.length === assignments.length}
-                        onChange={toggleSelectAll}
-                        className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
-                        title="Tout sélectionner / Tout décocher"
-                      />
-                    </th>
+                    {!isVisiteur && (
+                      <th className="px-4 py-4 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={assignments.length > 0 && selectedCins.length === assignments.length}
+                          onChange={toggleSelectAll}
+                          className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
+                          title="Tout sélectionner / Tout décocher"
+                        />
+                      </th>
+                    )}
                     <th className="px-6 py-4">CIN</th>
                     <th className="px-6 py-4">Électeur</th>
                     <th className="px-6 py-4">Commune</th>
@@ -301,7 +303,7 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
                     <th className="px-6 py-4">Encadrant Affecté & Téléphone</th>
                     <th className="px-6 py-4">Opérateur (Saisi par)</th>
                     <th className="px-6 py-4">Date Inscription</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                    {!isVisiteur && <th className="px-6 py-4 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -309,14 +311,16 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
                     const isChecked = selectedCins.includes(item.CIN);
                     return (
                       <tr key={item.CIN} className={`transition-colors ${isChecked ? 'bg-sky-950/20' : 'hover:bg-slate-900/40'}`}>
-                        <td className="px-4 py-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleSelectCin(item.CIN)}
-                            className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
-                          />
-                        </td>
+                        {!isVisiteur && (
+                          <td className="px-4 py-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSelectCin(item.CIN)}
+                              className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
+                            />
+                          </td>
+                        )}
                         <td className="px-6 py-4 font-mono font-bold text-sky-400">
                           {item.CIN}
                         </td>
@@ -347,15 +351,17 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
                         <td className="px-6 py-4 text-xs text-slate-400">
                           {item.DATE_INSCRIPTION ? item.DATE_INSCRIPTION.substring(0, 16) : 'N/C'}
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
-                            className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                            title="Annuler cette affectation"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
+                        {!isVisiteur && (
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
+                              className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                              title="Annuler cette affectation"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

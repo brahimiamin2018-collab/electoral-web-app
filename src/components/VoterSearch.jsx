@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2 } from 'lucide-react';
 
-export default function VoterSearch({ session, encadrants, communes, onAssignmentChange }) {
+export default function VoterSearch({ session, isVisiteur, encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
   const [selectedCommune, setSelectedCommune] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); 
@@ -320,7 +320,7 @@ export default function VoterSearch({ session, encadrants, communes, onAssignmen
       </div>
 
       {/* Floating Action Bar for PERSISTENT Bulk Assignment */}
-      {selectedCins.length > 0 && (
+      {selectedCins.length > 0 && !isVisiteur && (
         <div className="fixed bottom-20 md:bottom-6 left-3 right-3 md:left-1/2 md:right-auto md:-translate-x-1/2 z-40 bg-slate-900/95 border-2 border-sky-500 text-white px-4 md:px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 animate-slide-up">
           <div className="flex items-center space-x-3 text-xs sm:text-sm font-semibold w-full sm:w-auto justify-between sm:justify-start">
             <div className="flex items-center space-x-2">
@@ -443,13 +443,20 @@ export default function VoterSearch({ session, encadrants, communes, onAssignmen
                 </div>
 
                 <div className="pt-4 border-t border-slate-800 mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => handleOpenAssignModal(voter)}
-                    className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-md shadow-sky-500/20 flex items-center justify-center space-x-1.5 transition transform hover:scale-[1.02]"
-                  >
-                    <UserCheck className="w-4 h-4" />
-                    <span>Affecter</span>
-                  </button>
+                  {isVisiteur ? (
+                    <div className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-slate-800/60 border border-slate-700/60 text-slate-400 flex items-center justify-center space-x-1.5 cursor-not-allowed">
+                      <UserCheck className="w-4 h-4 text-slate-500" />
+                      <span>Consultation Seule</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenAssignModal(voter)}
+                      className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-md shadow-sky-500/20 flex items-center justify-center space-x-1.5 transition transform hover:scale-[1.02]"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>Affecter</span>
+                    </button>
+                  )}
                 </div>
 
               </div>

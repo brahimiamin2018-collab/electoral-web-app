@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Users, UserPlus, Phone, Edit, Trash2, Check, X, ShieldAlert } from 'lucide-react';
 
-export default function EncadrantsManager({ encadrants, onUpdate }) {
+export default function EncadrantsManager({ isVisiteur, encadrants, onUpdate }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [nom, setNom] = useState('');
   const [tel, setTel] = useState('');
@@ -87,13 +87,15 @@ export default function EncadrantsManager({ encadrants, onUpdate }) {
           </h2>
           <p className="text-xs text-slate-400">Liste officielle des chefs d'équipe et suivi des affectations par encadrant.</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-semibold text-xs shadow-lg shadow-amber-500/20 transition transform hover:-translate-y-0.5"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Nouveau Encadrant</span>
-        </button>
+        {!isVisiteur && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-semibold text-xs shadow-lg shadow-amber-500/20 transition transform hover:-translate-y-0.5"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Nouveau Encadrant</span>
+          </button>
+        )}
       </div>
 
       {/* Grid of Encadrants */}
@@ -148,26 +150,28 @@ export default function EncadrantsManager({ encadrants, onUpdate }) {
               </div>
 
               {/* Action buttons */}
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-end space-x-2">
-                <button
-                  onClick={() => {
-                    setEditingNom(enc.nom);
-                    setEditingTel(enc.tel || '');
-                  }}
-                  className="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-800 rounded-lg transition text-xs flex items-center space-x-1"
-                >
-                  <Edit className="w-4 h-4" />
-                  <span>Modifier TEL</span>
-                </button>
+              {!isVisiteur && (
+                <div className="pt-4 border-t border-slate-800 flex items-center justify-end space-x-2">
+                  <button
+                    onClick={() => {
+                      setEditingNom(enc.nom);
+                      setEditingTel(enc.tel || '');
+                    }}
+                    className="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-800 rounded-lg transition text-xs flex items-center space-x-1"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span>Modifier TEL</span>
+                  </button>
 
-                <button
-                  onClick={() => handleDelete(enc.nom, enc.count_affectations)}
-                  className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                  title="Supprimer l'encadrant"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+                  <button
+                    onClick={() => handleDelete(enc.nom, enc.count_affectations)}
+                    className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                    title="Supprimer l'encadrant"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

@@ -743,27 +743,54 @@ export async function getCommunes() {
 }
 
 // ----------------------------------------------------
-// DYNAMIC USERS & SESSIONS MANAGEMENT
+// DYNAMIC USERS & SESSIONS MANAGEMENT (DESCENTRALISÉS & PERSISTANTS)
 // ----------------------------------------------------
 
-let memoryFallbackUsers = [
+const usersFilePath = path.join(__dirname, 'users_db.json');
+
+const defaultUsersList = [
   { username: 'admin', password: 'admin123', role: 'admin', nom_complet: 'Administrateur Principal', created_at: new Date().toISOString() },
-  { username: 'user', password: 'user123', role: 'utilisateur', nom_complet: 'Opérateur de Saisie', created_at: new Date().toISOString() }
+  { username: 'user', password: 'user123', role: 'utilisateur', nom_complet: 'Opérateur de Saisie', created_at: new Date().toISOString() },
+  { username: 'visiteur', password: 'visiteur123', role: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)', created_at: new Date().toISOString() }
 ];
 
-function saveFallbackUser(userObj) {
-  const existingIdx = memoryFallbackUsers.findIndex(u => u.username.toLowerCase() === userObj.username.toLowerCase());
-  if (existingIdx >= 0) {
-    memoryFallbackUsers[existingIdx] = { ...memoryFallbackUsers[existingIdx], ...userObj };
-  } else {
-    memoryFallbackUsers.push(userObj);
-  }
-  return memoryFallbackUsers;
+function getPersistentUsersList() {
+  let list = [...defaultUsersList];
+  try {
+    if (fs.existsSync(usersFilePath)) {
+      const content = fs.readFileSync(usersFilePath, 'utf8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        const userMap = {};
+        defaultUsersList.forEach(u => { userMap[u.username.toLowerCase()] = u; });
+        parsed.forEach(u => { userMap[u.username.toLowerCase()] = u; });
+        list = Object.values(userMap);
+      }
+    }
+  } catch (e) {}
+  return list;
 }
 
-function removeFallbackUser(username) {
-  memoryFallbackUsers = memoryFallbackUsers.filter(u => u.username.toLowerCase() !== username.toLowerCase());
-  return memoryFallbackUsers;
+function savePersistentUserObj(userObj) {
+  const current = getPersistentUsersList();
+  const existingIdx = current.findIndex(u => u.username.toLowerCase() === userObj.username.toLowerCase());
+  if (existingIdx >= 0) {
+    current[existingIdx] = { ...current[existingIdx], ...userObj };
+  } else {
+    current.push(userObj);
+  }
+  try {
+    fs.writeFileSync(usersFilePath, JSON.stringify(current, null, 2), 'utf8');
+  } catch (e) {}
+  return current;
+}
+
+function removePersistentUserObj(username) {
+  const current = getPersistentUsersList().filter(u => u.username.toLowerCase() !== username.trim().toLowerCase());
+  try {
+    fs.writeFileSync(usersFilePath, JSON.stringify(current, null, 2), 'utf8');
+  } catch (e) {}
+  return current;
 }
 
 export async function loginUser(username, password) {
@@ -782,8 +809,9 @@ export async function loginUser(username, password) {
     } catch (e) {}
   }
 
-  // Fallback memory list
-  const found = memoryFallbackUsers.find(u => u.username.toLowerCase() === cleanUser);
+  // Persistent disk/memory check
+  const allLocal = getPersistentUsersList();
+  const found = allLocal.find(u => u.username.toLowerCase() === cleanUser);
   if (found && found.password === cleanPass) {
     return { username: found.username, role: found.role, nom_complet: found.nom_complet || found.username };
   }
@@ -792,13 +820,15 @@ export async function loginUser(username, password) {
 }
 
 export async function getUsers() {
+  const localList = getPersistentUsersList();
+
   if (isCloudMode) {
     try {
       const { data: users, error } = await supabase.from('utilisateurs').select('*').order('created_at', { ascending: true });
       if (!error && users && users.length > 0) {
         const cloudMap = {};
         users.forEach(u => { cloudMap[u.username.toLowerCase()] = u; });
-        memoryFallbackUsers.forEach(u => {
+        localList.forEach(u => {
           if (!cloudMap[u.username.toLowerCase()]) {
             cloudMap[u.username.toLowerCase()] = u;
           }
@@ -808,7 +838,7 @@ export async function getUsers() {
     } catch (e) {}
   }
 
-  return memoryFallbackUsers.map(u => ({
+  return localList.map(u => ({
     username: u.username,
     role: u.role,
     nom_complet: u.nom_complet || u.username,
@@ -826,7 +856,7 @@ export async function addUser({ username, password, role = 'utilisateur', nom_co
     created_at: new Date().toISOString()
   };
 
-  saveFallbackUser(newUserObj);
+  savePersistentUserObj(newUserObj);
 
   if (isCloudMode) {
     try {
@@ -848,7 +878,7 @@ export async function deleteUser(username) {
     throw new Error('Impossible de supprimer le compte administrateur principal.');
   }
 
-  removeFallbackUser(cleanUser);
+  removePersistentUserObj(cleanUser);
 
   if (isCloudMode) {
     try {

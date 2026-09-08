@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Database, RefreshCw, Download, FileSpreadsheet, CheckCircle2, AlertCircle, Server } from 'lucide-react';
 
-export default function DataMigration({ onMigrated }) {
+export default function DataMigration({ isVisiteur, onMigrated }) {
   const [migrating, setMigrating] = useState(false);
   const [log, setLog] = useState('');
   const [status, setStatus] = useState(null);
 
   const handleRunMigration = async () => {
+    if (isVisiteur) return;
     if (!confirm('Voulez-vous ré-importer les données depuis database_backend.accdb ? Cela mettra à jour BDD_MERE, AFFECTATIONS et LISTE_ENCADRANTS.')) {
       return;
     }
@@ -67,11 +68,11 @@ export default function DataMigration({ onMigrated }) {
 
           <button
             onClick={handleRunMigration}
-            disabled={migrating}
+            disabled={migrating || isVisiteur}
             className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-sky-500/20 disabled:opacity-50 flex items-center justify-center space-x-2"
           >
             <RefreshCw className={`w-4 h-4 ${migrating ? 'animate-spin' : ''}`} />
-            <span>{migrating ? 'Importation en cours...' : 'Lancer la Ré-importation Access'}</span>
+            <span>{isVisiteur ? 'Ré-importation désactivée (Mode Visiteur)' : migrating ? 'Importation en cours...' : 'Lancer la Ré-importation Access'}</span>
           </button>
 
           {log && (

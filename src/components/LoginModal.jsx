@@ -34,6 +34,13 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
       return;
     }
 
+    // Check Visiteur credentials
+    if ((cleanUser === 'visiteur' || cleanUser === 'guest') && (cleanPass === 'visiteur123' || cleanPass === 'visiteur')) {
+      onLogin({ role: 'visiteur', username: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)' });
+      if (onClose) onClose();
+      return;
+    }
+
     // Check custom users saved in localStorage
     try {
       const stored = localStorage.getItem('electoral_custom_users');
@@ -125,22 +132,35 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
             </div>
           </div>
 
-          <div className="pt-2 flex items-center justify-end space-x-3">
-            {!isLocked && onClose && (
+          <div className="pt-2 flex flex-col space-y-2">
+            <div className="flex items-center justify-end space-x-3">
+              {!isLocked && onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-xs font-medium"
+                >
+                  Annuler
+                </button>
+              )}
               <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-xs font-medium"
+                type="submit"
+                className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-bold shadow-lg shadow-sky-500/20 flex items-center justify-center space-x-2 transition transform hover:scale-[1.02]"
               >
-                Annuler
+                <span>Ouvrir la Session</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
-            )}
+            </div>
+
             <button
-              type="submit"
-              className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-bold shadow-lg shadow-sky-500/20 flex items-center justify-center space-x-2 transition transform hover:scale-[1.02]"
+              type="button"
+              onClick={() => {
+                onLogin({ role: 'visiteur', username: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)' });
+                if (onClose) onClose();
+              }}
+              className="w-full py-2.5 px-4 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/40 text-purple-300 font-semibold text-xs transition text-center"
             >
-              <span>Ouvrir la Session</span>
-              <ArrowRight className="w-4 h-4" />
+              👁️ Accès Visiteur (Consultation seule sans modification)
             </button>
           </div>
 

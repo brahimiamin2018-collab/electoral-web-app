@@ -35,10 +35,12 @@ export default function App() {
     }
   }, [session]);
 
-  // Enforce restricted tab for "utilisateur"
+  // Enforce restricted tab for "utilisateur" and "visiteur"
   useEffect(() => {
     if (userRole === 'utilisateur') {
       setActiveTab('voters');
+    } else if (userRole === 'visiteur' && activeTab === 'users') {
+      setActiveTab('dashboard');
     } else if (userRole === 'admin' && activeTab === 'voters') {
       setActiveTab('dashboard');
     }
@@ -97,6 +99,8 @@ export default function App() {
     );
   }
 
+  const isReadOnly = userRole === 'visiteur';
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white">
       
@@ -129,29 +133,47 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'dashboard' && userRole === 'admin' && (
+        {/* Role Banner for Visiteur */}
+        {userRole === 'visiteur' && (
+          <div className="mb-6 p-4 glass-panel border border-purple-500/30 rounded-2xl flex items-center justify-between text-xs text-purple-300">
+            <div>
+              <strong>Mode Visiteur Actif (Lecture Seule) :</strong> Consultation complète de toutes les vues sans autorisation de modification. La page Gestion des Utilisateurs est masquée.
+            </div>
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="font-bold underline text-purple-400 hover:text-purple-200 ml-4 flex-shrink-0"
+            >
+              Se connecter
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'dashboard' && (userRole === 'admin' || userRole === 'visiteur') && (
           <Dashboard stats={stats} onNavigate={(tab) => setActiveTab(tab)} />
         )}
 
         {activeTab === 'voters' && (
           <VoterSearch
             session={session}
+            isVisiteur={isReadOnly}
             encadrants={encadrants}
             communes={communes}
             onAssignmentChange={loadAllData}
           />
         )}
 
-        {activeTab === 'assignments' && userRole === 'admin' && (
+        {activeTab === 'assignments' && (userRole === 'admin' || userRole === 'visiteur') && (
           <Assignments
+            isVisiteur={isReadOnly}
             encadrants={encadrants}
             communes={communes}
             onAssignmentChange={loadAllData}
           />
         )}
 
-        {activeTab === 'encadrants' && userRole === 'admin' && (
+        {activeTab === 'encadrants' && (userRole === 'admin' || userRole === 'visiteur') && (
           <EncadrantsManager
+            isVisiteur={isReadOnly}
             encadrants={encadrants}
             onUpdate={loadAllData}
           />
@@ -161,8 +183,9 @@ export default function App() {
           <UsersManager />
         )}
 
-        {activeTab === 'migration' && userRole === 'admin' && (
+        {activeTab === 'migration' && (userRole === 'admin' || userRole === 'visiteur') && (
           <DataMigration
+            isVisiteur={isReadOnly}
             onMigrated={loadAllData}
           />
         )}

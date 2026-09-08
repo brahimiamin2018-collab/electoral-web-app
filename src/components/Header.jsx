@@ -13,7 +13,8 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
 
   // Filter tabs by role
   const visibleTabs = allTabs.filter(tab => {
-    if (userRole === 'utilisateur') return !tab.adminOnly;
+    if (userRole === 'utilisateur') return tab.id === 'voters';
+    if (userRole === 'visiteur') return tab.id !== 'users';
     return true;
   });
 
@@ -32,9 +33,13 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
                 <p className="text-[10px] sm:text-xs text-sky-400 font-medium flex items-center gap-1">
                   <span className="hidden sm:inline">Connecté : <strong>{session ? session.username : ''}</strong> • </span>
                   <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-bold ${
-                    userRole === 'admin' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                    userRole === 'admin' 
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                      : userRole === 'visiteur'
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                      : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                   }`}>
-                    {userRole === 'admin' ? 'Admin' : 'Utilisateur'}
+                    {userRole === 'admin' ? 'Admin' : userRole === 'visiteur' ? 'Visiteur' : 'Utilisateur'}
                   </span>
                 </p>
               </div>
