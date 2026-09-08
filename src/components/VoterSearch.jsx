@@ -417,18 +417,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                         CIN: {voter.CIN}
                       </span>
                     </div>
-
-                    {isAssigned ? (
-                      <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30">
-                        <UserCheck className="w-3.5 h-3.5 text-sky-400" />
-                        <span>Affecté</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Disponible</span>
-                      </span>
-                    )}
                   </div>
 
                   <div>

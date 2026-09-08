@@ -680,12 +680,26 @@ export async function deleteAssignment(cin) {
 
 export async function getCommunes() {
   if (isCloudMode) {
-    const { data } = await supabase.from('bdd_mere').select('commune');
-    const set = new Set();
-    (data || []).forEach(r => {
-      if (r.commune) set.add(r.commune);
-    });
-    return Array.from(set).sort();
+    try {
+      const set = new Set();
+      let currentCommune = '';
+      while (true) {
+        let q = supabase.from('bdd_mere').select('commune').order('commune', { ascending: true }).limit(1);
+        if (currentCommune) {
+          q = q.gt('commune', currentCommune);
+        }
+        const { data, error } = await q;
+        if (error || !data || data.length === 0) break;
+        const val = data[0].commune ? data[0].commune.trim() : '';
+        if (val) set.add(val);
+        currentCommune = data[0].commune;
+      }
+      if (set.size > 0) {
+        return Array.from(set).sort();
+      }
+    } catch (e) {
+      console.error('Erreur chargement communes Supabase:', e);
+    }
   }
 
   const sql = `SELECT DISTINCT COMMUNE FROM BDD_MERE WHERE COMMUNE IS NOT NULL AND COMMUNE != '' ORDER BY COMMUNE ASC`;
