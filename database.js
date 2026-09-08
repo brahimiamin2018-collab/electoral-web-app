@@ -797,6 +797,18 @@ export async function loginUser(username, password) {
   const cleanUser = (username || '').trim().toLowerCase();
   const cleanPass = (password || '').trim();
 
+  // Check default built-in accounts
+  if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
+    return { username: 'admin', role: 'admin', nom_complet: 'Administrateur Principal' };
+  }
+  if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
+    return { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie' };
+  }
+  if ((cleanUser === 'visiteur' || cleanUser === 'guest') && (cleanPass === 'visiteur123' || cleanPass === 'visiteur')) {
+    return { username: 'visiteur', role: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)' };
+  }
+
+  // Cloud Supabase check
   if (isCloudMode) {
     try {
       const { data: user, error } = await supabase.from('utilisateurs').select('*').eq('username', cleanUser).maybeSingle();
@@ -809,7 +821,7 @@ export async function loginUser(username, password) {
     } catch (e) {}
   }
 
-  // Persistent disk/memory check
+  // Persistent disk / SQLite check
   const allLocal = getPersistentUsersList();
   const found = allLocal.find(u => u.username.toLowerCase() === cleanUser);
   if (found && found.password === cleanPass) {
