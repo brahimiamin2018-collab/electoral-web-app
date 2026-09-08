@@ -85,7 +85,6 @@ export default function EncadrantsManager({ isVisiteur, encadrants, onUpdate }) 
             <Users className="w-5 h-5 text-amber-400" />
             <span>Gestion des Encadrants</span>
           </h2>
-          <p className="text-xs text-slate-400">Liste officielle des chefs d'équipe et suivi des affectations par encadrant.</p>
         </div>
         {!isVisiteur && (
           <button

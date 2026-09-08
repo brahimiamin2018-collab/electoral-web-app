@@ -62,9 +62,6 @@ export default function Dashboard({ stats, onNavigate }) {
                 Temps Réel
               </span>
             </h2>
-            <p className="text-slate-400 text-sm max-w-2xl">
-              Suivi instantané des inscriptions et de la répartition des électeurs par encadrant et par bureau de vote.
-            </p>
           </div>
           <button
             onClick={() => onNavigate('voters')}

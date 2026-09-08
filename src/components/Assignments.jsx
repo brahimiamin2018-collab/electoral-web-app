@@ -111,7 +111,6 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
               <UserCheck className="w-5 h-5 text-emerald-400" />
               <span>Gestion des Affectations</span>
             </h2>
-            <p className="text-xs text-slate-400">Consultation, suppression en masse et annulation par encadrant ({total} au total).</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

@@ -245,9 +245,8 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Search className="w-5 h-5 text-sky-400" />
-              <span>Saisie & Sélection Cumulée Multi-Recherches</span>
+              <span>Recherche Électeurs</span>
             </h2>
-            <p className="text-xs text-slate-400">Recherchez et cochez vos électeurs. Vos sélections sont conservées en mémoire d'une recherche à l'autre !</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
