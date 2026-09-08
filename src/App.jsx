@@ -133,20 +133,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Role Banner for Visiteur */}
-        {userRole === 'visiteur' && (
-          <div className="mb-6 p-4 glass-panel border border-purple-500/30 rounded-2xl flex items-center justify-between text-xs text-purple-300">
-            <div>
-              <strong>Mode Visiteur Actif (Lecture Seule) :</strong> Consultation complète de toutes les vues sans autorisation de modification. La page Gestion des Utilisateurs est masquée.
-            </div>
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="font-bold underline text-purple-400 hover:text-purple-200 ml-4 flex-shrink-0"
-            >
-              Se connecter
-            </button>
-          </div>
-        )}
+
 
         {activeTab === 'dashboard' && (userRole === 'admin' || userRole === 'visiteur') && (
           <Dashboard stats={stats} onNavigate={(tab) => setActiveTab(tab)} />
