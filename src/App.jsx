@@ -8,10 +8,20 @@ import DataMigration from './components/DataMigration';
 import LoginModal from './components/LoginModal';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('voters');
-  const [userRole, setUserRole] = useState(() => {
-    return localStorage.getItem('electoral_user_role') || 'admin';
+  // Session Authentication Gate (Must be logged in with username + password)
+  const [session, setSession] = useState(() => {
+    const saved = localStorage.getItem('electoral_session');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return null; // Null means app is LOCKED closed until user logs in!
   });
+
+  const userRole = session ? session.role : null;
+
+  const [activeTab, setActiveTab] = useState('voters');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const [stats, setStats] = useState(null);
@@ -19,13 +29,17 @@ export default function App() {
   const [communes, setCommunes] = useState([]);
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (session) {
+      loadAllData();
+    }
+  }, [session]);
 
   // Enforce restricted tab for "utilisateur"
   useEffect(() => {
     if (userRole === 'utilisateur') {
       setActiveTab('voters');
+    } else if (userRole === 'admin' && activeTab === 'voters') {
+      setActiveTab('dashboard');
     }
   }, [userRole]);
 
@@ -54,15 +68,33 @@ export default function App() {
     }
   };
 
-  const handleRoleChange = (newRole) => {
-    setUserRole(newRole);
-    localStorage.setItem('electoral_user_role', newRole);
-    if (newRole === 'utilisateur') {
+  const handleLoginSuccess = (newSession) => {
+    setSession(newSession);
+    localStorage.setItem('electoral_session', JSON.stringify(newSession));
+    if (newSession.role === 'utilisateur') {
       setActiveTab('voters');
     } else {
       setActiveTab('dashboard');
     }
   };
+
+  const handleLogout = () => {
+    setSession(null);
+    localStorage.removeItem('electoral_session');
+  };
+
+  // IF NOT AUTHENTICATED: Show Full-Screen Lock Gate
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+        <LoginModal
+          isOpen={true}
+          isLocked={true}
+          onLogin={handleLoginSuccess}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white">
@@ -73,7 +105,9 @@ export default function App() {
         setActiveTab={setActiveTab} 
         stats={stats} 
         userRole={userRole}
+        session={session}
         onOpenLogin={() => setShowLoginModal(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content View Container */}
@@ -83,13 +117,13 @@ export default function App() {
         {userRole === 'utilisateur' && (
           <div className="mb-6 p-4 glass-panel border border-sky-500/30 rounded-2xl flex items-center justify-between text-xs text-sky-300">
             <div>
-              <strong>Mode Utilisateur Actif :</strong> Vous avez un accès dédié pour effectuer des recherches et des affectations d'électeurs.
+              <strong>Mode Utilisateur Actif ({session.username}) :</strong> Accès réservé aux recherches et affectations d'électeurs.
             </div>
             <button
               onClick={() => setShowLoginModal(true)}
               className="font-bold underline text-sky-400 hover:text-sky-200 ml-4 flex-shrink-0"
             >
-              Basculer en Administrateur
+              Changer de compte
             </button>
           </div>
         )}
@@ -129,16 +163,17 @@ export default function App() {
 
       </main>
 
-      {/* Login / Role Selection Modal */}
+      {/* Switch Account Modal */}
       <LoginModal
         isOpen={showLoginModal}
+        isLocked={false}
         onClose={() => setShowLoginModal(false)}
-        onLogin={handleRoleChange}
+        onLogin={handleLoginSuccess}
       />
 
       {/* Footer */}
       <footer className="glass-panel border-t border-slate-800/80 py-6 text-center text-xs text-slate-500 print:hidden">
-        <p>Application Web Électorale Multi-Utilisateurs • Remplacement Excel/Access • Antigravity 2026</p>
+        <p>Application Web Électorale Multi-Utilisateurs • Session : {session.username} ({session.role})</p>
       </footer>
 
     </div>

@@ -40,7 +40,7 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
     window.print();
   };
 
-  const portalContent = (
+  return createPortal(
     <>
       {/* On-Screen Modal Overlay (Hidden during print) */}
       <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:hidden">
@@ -199,6 +199,4 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
     </>,
     document.body
   );
-
-  return portalContent;
 }

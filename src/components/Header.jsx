@@ -1,7 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, stats, userRole, onOpenLogin }) {
+export default function Header({ activeTab, setActiveTab, stats, userRole, session, onOpenLogin, onLogout }) {
   const allTabs = [
     { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, adminOnly: true },
     { id: 'voters', label: 'Recherche Électeurs', icon: Vote, adminOnly: false },
@@ -32,7 +32,7 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, onOpe
                   Gestion Électorale
                 </h1>
                 <p className="text-[10px] sm:text-xs text-sky-400 font-medium flex items-center gap-1">
-                  <span className="hidden sm:inline">Système Multi-Utilisateurs • </span>
+                  <span className="hidden sm:inline">Connecté : <strong>{session ? session.username : ''}</strong> • </span>
                   <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-bold ${
                     userRole === 'admin' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                   }`}>
@@ -62,7 +62,7 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, onOpe
               </div>
             )}
 
-            {/* Desktop Navigation & Session Switch */}
+            {/* Desktop Navigation & Session Actions */}
             <div className="flex items-center space-x-2 sm:space-x-3">
               <nav className="hidden md:flex items-center space-x-1 sm:space-x-2">
                 {visibleTabs.map((tab) => {
@@ -85,15 +85,17 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, onOpe
                 })}
               </nav>
 
-              {/* Session / Login Switch Button */}
-              <button
-                onClick={onOpenLogin}
-                className="flex items-center space-x-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-300 transition"
-                title="Changer de session"
-              >
-                {userRole === 'admin' ? <Shield className="w-3.5 h-3.5 text-amber-400" /> : <User className="w-3.5 h-3.5 text-sky-400" />}
-                <span className="text-[11px] sm:text-xs">Rôle</span>
-              </button>
+              {/* Logout / Lock App Button */}
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl border border-rose-500/30 bg-rose-950/20 hover:bg-rose-900/40 text-xs font-semibold text-rose-300 transition"
+                  title="Fermer l'application & Se déconnecter"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="hidden sm:inline">Déconnexion</span>
+                </button>
+              )}
             </div>
 
           </div>
