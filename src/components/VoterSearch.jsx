@@ -82,7 +82,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     setSelectedVoter(voter);
     setTelElecteur(voter.affecte_tel_electeur || '');
     setVerifyData(null);
-    setForceOverwrite(false);
+    setForceOverwrite(!!voter.affecte_encadrant);
     
     if (voter.affecte_encadrant) {
       setSelectedEncadrant(voter.affecte_encadrant);
@@ -183,7 +183,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
             encadrant: selectedEncadrant,
             tel: telEncadrant,
             tel_electeur: telElecteur,
-            overwrite: forceOverwrite,
+            overwrite: forceOverwrite || !!selectedVoter.affecte_encadrant,
           }),
         });
 
@@ -583,16 +583,25 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
               )}
 
               {!isBulkMode && selectedVoter && (
-                <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-bold text-white text-base">{selectedVoter.PRENOM} {selectedVoter.NOM}</h4>
-                    <span className="font-mono text-sky-400 font-semibold bg-sky-500/10 px-2 py-0.5 rounded">
-                      CIN: {selectedVoter.CIN}
-                    </span>
+                <div className="space-y-3">
+                  <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-bold text-white text-base">{selectedVoter.PRENOM} {selectedVoter.NOM}</h4>
+                      <span className="font-mono text-sky-400 font-semibold bg-sky-500/10 px-2 py-0.5 rounded">
+                        CIN: {selectedVoter.CIN}
+                      </span>
+                    </div>
+                    <p className="text-slate-400">
+                      Commune: <span className="text-slate-200">{selectedVoter.COMMUNE || 'N/C'}</span> • Bureau: <span className="text-slate-200">{selectedVoter.LIEU_BUREAU_VOTE || selectedVoter.NOM_BUREAU_VOTE || 'N/C'}</span>
+                    </p>
                   </div>
-                  <p className="text-slate-400">
-                    Commune: <span className="text-slate-200">{selectedVoter.COMMUNE || 'N/C'}</span> • Bureau: <span className="text-slate-200">{selectedVoter.LIEU_BUREAU_VOTE || selectedVoter.NOM_BUREAU_VOTE || 'N/C'}</span>
-                  </p>
+
+                  {selectedVoter.affecte_encadrant && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-500/40 rounded-xl text-xs text-amber-300 flex items-center space-x-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                      <span>Réaffectation : Cet électeur est actuellement attribué à <strong>{selectedVoter.affecte_encadrant}</strong>. La validation le transférera vers le nouvel encadrant sélectionné.</span>
+                    </div>
+                  )}
                 </div>
               )}
 
