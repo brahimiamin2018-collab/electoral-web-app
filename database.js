@@ -1,4 +1,3 @@
-import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
@@ -22,33 +21,42 @@ let db = null;
 if (isCloudMode) {
   supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   console.log(`🌐 Mode Base de Données Cloud Activé (Supabase: ${SUPABASE_URL})`);
-} else {
+}
+
+async function getLocalDb() {
+  if (db) return db;
+  const sqlite3Module = await import('sqlite3');
+  const sqlite3 = sqlite3Module.default || sqlite3Module;
   db = new sqlite3.Database(dbPath);
   console.log(`💾 Mode Base de Données Locale Activé (SQLite: ${dbPath})`);
+  return db;
 }
 
 // Helpers for Promisified Local SQLite Queries
-const queryLocal = (sql, params = []) => {
+const queryLocal = async (sql, params = []) => {
+  const localDb = await getLocalDb();
   return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
+    localDb.all(sql, params, (err, rows) => {
       if (err) reject(err);
       else resolve(rows);
     });
   });
 };
 
-const getLocal = (sql, params = []) => {
+const getLocal = async (sql, params = []) => {
+  const localDb = await getLocalDb();
   return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
+    localDb.get(sql, params, (err, row) => {
       if (err) reject(err);
       else resolve(row);
     });
   });
 };
 
-const runLocal = (sql, params = []) => {
+const runLocal = async (sql, params = []) => {
+  const localDb = await getLocalDb();
   return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
+    localDb.run(sql, params, function (err) {
       if (err) reject(err);
       else resolve({ lastID: this.lastID, changes: this.changes });
     });
