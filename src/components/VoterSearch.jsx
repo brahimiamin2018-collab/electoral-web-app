@@ -4,7 +4,7 @@ import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, 
 export default function VoterSearch({ encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
   const [selectedCommune, setSelectedCommune] = useState('');
-  const [statusFilter, setStatusFilter] = useState('unassigned'); 
+  const [statusFilter, setStatusFilter] = useState('all'); 
   
   const [voters, setVoters] = useState([]);
   const [total, setTotal] = useState(0);
@@ -391,7 +391,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                 className={`glass-card p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between cursor-pointer relative ${
                   isChecked 
                     ? 'border-sky-400 bg-sky-950/40 ring-2 ring-sky-500/40' 
-                    : isAssigned ? 'border-amber-500/40 bg-amber-950/10' : 'border-slate-800 hover:border-slate-700'
+                    : 'border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <div className="space-y-3">
@@ -419,9 +419,9 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     </div>
 
                     {isAssigned ? (
-                      <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/40">
-                        <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Déjà Affecté</span>
+                      <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                        <UserCheck className="w-3.5 h-3.5 text-sky-400" />
+                        <span>Affecté</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
@@ -456,9 +456,9 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                   </div>
 
                   {isAssigned && (
-                    <div className="bg-amber-950/40 p-3 rounded-xl border border-amber-500/30 text-xs space-y-1">
-                      <div className="text-amber-400 font-semibold flex items-center gap-1">
-                        <ShieldAlert className="w-3.5 h-3.5" />
+                    <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
+                      <div className="text-sky-400 font-semibold flex items-center gap-1">
+                        <UserCheck className="w-3.5 h-3.5" />
                         <span>Attribué à l'encadrant :</span>
                       </div>
                       <div className="font-bold text-white text-sm flex items-center justify-between">
@@ -480,7 +480,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                     onClick={() => handleOpenAssignModal(voter)}
                     className={`w-full py-2 px-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center space-x-1.5 ${
                       isAssigned 
-                        ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30' 
+                        ? 'bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30' 
                         : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-md shadow-sky-500/20'
                     }`}
                   >
@@ -597,9 +597,9 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
                   </div>
 
                   {selectedVoter.affecte_encadrant && (
-                    <div className="p-3 bg-amber-950/40 border border-amber-500/40 rounded-xl text-xs text-amber-300 flex items-center space-x-2">
-                      <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                      <span>Réaffectation : Cet électeur est actuellement attribué à <strong>{selectedVoter.affecte_encadrant}</strong>. La validation le transférera vers le nouvel encadrant sélectionné.</span>
+                    <div className="p-3 bg-slate-900/80 border border-sky-500/30 rounded-xl text-xs text-sky-300 flex items-center space-x-2">
+                      <UserCheck className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                      <span>Réaffectation : Électeur actuellement attribué à <strong>{selectedVoter.affecte_encadrant}</strong>. La validation le réaffectera à l'encadrant sélectionné.</span>
                     </div>
                   )}
                 </div>

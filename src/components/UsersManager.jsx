@@ -21,15 +21,35 @@ export default function UsersManager() {
 
   const fetchUsers = async () => {
     setLoading(true);
+    let apiUsers = [];
     try {
       const res = await fetch('/api/users');
-      const data = await res.json();
-      setUsers(data || []);
+      if (res.ok) {
+        apiUsers = await res.json();
+      }
     } catch (err) {
-      console.error('Erreur chargement utilisateurs:', err);
-    } finally {
-      setLoading(false);
+      console.error('Erreur chargement utilisateurs API:', err);
     }
+
+    // Merge with local storage custom users
+    let localCustomUsers = [];
+    try {
+      const stored = localStorage.getItem('electoral_custom_users');
+      if (stored) {
+        localCustomUsers = JSON.parse(stored);
+      }
+    } catch (e) {}
+
+    const userMap = {};
+    (apiUsers || []).forEach(u => { userMap[u.username.toLowerCase()] = u; });
+    localCustomUsers.forEach(u => {
+      if (!userMap[u.username.toLowerCase()]) {
+        userMap[u.username.toLowerCase()] = u;
+      }
+    });
+
+    setUsers(Object.values(userMap));
+    setLoading(false);
   };
 
   const handleAddUserSubmit = async (e) => {
@@ -42,57 +62,66 @@ export default function UsersManager() {
     setSubmitting(true);
     setErrorMsg('');
 
+    const newUserObj = {
+      username: username.trim().toLowerCase(),
+      password: password.trim(),
+      role,
+      nom_complet: nomComplet.trim() || username.trim(),
+      created_at: new Date().toISOString()
+    };
+
+    // Save to localStorage
     try {
-      const res = await fetch('/api/users', {
+      const stored = localStorage.getItem('electoral_custom_users');
+      let customUsers = stored ? JSON.parse(stored) : [];
+      customUsers = customUsers.filter(u => u.username.toLowerCase() !== newUserObj.username);
+      customUsers.push(newUserObj);
+      localStorage.setItem('electoral_custom_users', JSON.stringify(customUsers));
+    } catch (e) {}
+
+    try {
+      await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: username.trim(),
-          password: password.trim(),
-          role,
-          nom_complet: nomComplet.trim()
-        }),
+        body: JSON.stringify(newUserObj),
       });
+    } catch (err) {}
 
-      const data = await res.json();
-      if (res.ok) {
-        setUsername('');
-        setPassword('');
-        setNomComplet('');
-        setRole('utilisateur');
-        setShowAddModal(false);
-        fetchUsers();
-      } else {
-        setErrorMsg(data.error || 'Erreur lors de la création du compte.');
-      }
-    } catch (err) {
-      setErrorMsg('Erreur réseau.');
-    } finally {
-      setSubmitting(false);
-    }
+    setUsername('');
+    setPassword('');
+    setNomComplet('');
+    setRole('utilisateur');
+    setShowAddModal(false);
+    setSubmitting(false);
+    fetchUsers();
   };
 
   const handleDeleteUser = async (userToDelete) => {
-    if (userToDelete.toLowerCase() === 'admin') {
+    const cleanUser = userToDelete.toLowerCase();
+    if (cleanUser === 'admin') {
       alert('Impossible de supprimer le compte administrateur principal.');
       return;
     }
 
     if (!confirm(`Confirmez-vous la suppression du compte "${userToDelete}" ?`)) return;
 
+    // Remove from localStorage
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(userToDelete)}`, {
+      const stored = localStorage.getItem('electoral_custom_users');
+      if (stored) {
+        let customUsers = JSON.parse(stored);
+        customUsers = customUsers.filter(u => u.username.toLowerCase() !== cleanUser);
+        localStorage.setItem('electoral_custom_users', JSON.stringify(customUsers));
+      }
+    } catch (e) {}
+
+    try {
+      await fetch(`/api/users/${encodeURIComponent(userToDelete)}`, {
         method: 'DELETE',
       });
-      if (res.ok) {
-        fetchUsers();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Échec de la suppression.');
-      }
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) {}
+
+    fetchUsers();
   };
 
   return (

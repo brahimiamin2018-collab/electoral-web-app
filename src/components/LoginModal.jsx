@@ -8,7 +8,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
 
   if (!isOpen && !isLocked) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -22,17 +22,48 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
 
     // Check Admin credentials
     if ((cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'admin123' || cleanPass === 'admin')) {
-      onLogin({ role: 'admin', username: 'admin' });
+      onLogin({ role: 'admin', username: 'admin', nom_complet: 'Administrateur Principal' });
       if (onClose) onClose();
       return;
     }
 
     // Check User credentials
     if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
-      onLogin({ role: 'utilisateur', username: 'user' });
+      onLogin({ role: 'utilisateur', username: 'user', nom_complet: 'Opérateur de Saisie' });
       if (onClose) onClose();
       return;
     }
+
+    // Check custom users saved in localStorage
+    try {
+      const stored = localStorage.getItem('electoral_custom_users');
+      if (stored) {
+        const customUsers = JSON.parse(stored);
+        const match = customUsers.find(u => u.username.toLowerCase() === cleanUser && u.password === cleanPass);
+        if (match) {
+          onLogin({ role: match.role, username: match.username, nom_complet: match.nom_complet || match.username });
+          if (onClose) onClose();
+          return;
+        }
+      }
+    } catch (err) {}
+
+    // Try backend API login
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, password: cleanPass })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          onLogin(data.user);
+          if (onClose) onClose();
+          return;
+        }
+      }
+    } catch (err) {}
 
     setError('Nom d\'utilisateur ou mot de passe incorrect.');
   };

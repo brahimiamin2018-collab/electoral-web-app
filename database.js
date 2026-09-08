@@ -196,7 +196,7 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
     }
 
     if (commune && commune.trim()) {
-      queryBuilder = queryBuilder.eq('commune', commune.trim());
+      queryBuilder = queryBuilder.ilike('commune', commune.trim());
     }
 
     queryBuilder = queryBuilder.range(Number(offset), Number(offset) + Number(limit) - 1);
