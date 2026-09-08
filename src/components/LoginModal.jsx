@@ -74,33 +74,15 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-gradient-to-tr from-sky-500 to-blue-600 rounded-xl text-white shadow-lg shadow-sky-500/20">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-bold text-white text-lg">Connexion Obligatoire</h3>
-              <p className="text-xs text-sky-400 font-medium">Système de Gestion Électorale Web</p>
-            </div>
+          <div>
+            <h3 className="font-bold text-white text-lg">Connexion Obligatoire</h3>
+            <p className="text-xs text-sky-400 font-medium">Système de Gestion Électorale Web</p>
           </div>
           {!isLocked && onClose && (
             <button onClick={onClose} className="text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
           )}
-        </div>
-
-        {/* Informative credentials note */}
-        <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-xl text-xs space-y-1.5 text-slate-300">
-          <div className="font-semibold text-white">Identifiants d'accès :</div>
-          <div className="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800">
-            <span><strong>Session Admin:</strong> admin / admin123</span>
-            <span className="text-amber-400 font-bold text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Admin</span>
-          </div>
-          <div className="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800">
-            <span><strong>Session User:</strong> user / user123</span>
-            <span className="text-sky-400 font-bold text-[10px] bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20">Utilisateur</span>
-          </div>
         </div>
 
         {error && (

@@ -257,6 +257,7 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
                     <div className="text-xs text-slate-400 space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
                       <div>Commune: <strong className="text-slate-200">{item.COMMUNE || 'N/C'}</strong></div>
                       <div>Bureau: <strong className="text-slate-200">{item.LIEU_BUREAU_VOTE || 'N/C'}</strong></div>
+                      <div>Opérateur (Saisi par): <strong className="text-sky-300 font-mono">{item.NOM_PC || 'admin'}</strong></div>
                     </div>
 
                     <div className="flex items-center justify-between bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/20 text-xs">
@@ -298,6 +299,7 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
                     <th className="px-6 py-4">Commune</th>
                     <th className="px-6 py-4">Bureau de Vote</th>
                     <th className="px-6 py-4">Encadrant Affecté & Téléphone</th>
+                    <th className="px-6 py-4">Opérateur (Saisi par)</th>
                     <th className="px-6 py-4">Date Inscription</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
@@ -336,6 +338,11 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
                               <span>{item.TEL}</span>
                             </a>
                           )}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-semibold">
+                          <span className="bg-sky-500/10 text-sky-300 border border-sky-500/20 px-2.5 py-1 rounded-lg font-mono">
+                            {item.NOM_PC || 'admin'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-xs text-slate-400">
                           {item.DATE_INSCRIPTION ? item.DATE_INSCRIPTION.substring(0, 16) : 'N/C'}

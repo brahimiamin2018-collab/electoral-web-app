@@ -110,6 +110,16 @@ export async function initDb() {
     );
   `);
 
+  await runLocal(`
+    CREATE TABLE IF NOT EXISTS UTILISATEURS (
+      USERNAME TEXT PRIMARY KEY,
+      PASSWORD TEXT NOT NULL,
+      ROLE TEXT NOT NULL,
+      NOM_COMPLET TEXT,
+      CREATED_AT TEXT
+    );
+  `);
+
   await runLocal(`CREATE INDEX IF NOT EXISTS idx_bdd_cin ON BDD_MERE(CIN);`);
   await runLocal(`CREATE INDEX IF NOT EXISTS idx_bdd_nom_prenom ON BDD_MERE(NOM, PRENOM);`);
   await runLocal(`CREATE INDEX IF NOT EXISTS idx_bdd_commune ON BDD_MERE(COMMUNE);`);

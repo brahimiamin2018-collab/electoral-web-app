@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2 } from 'lucide-react';
 
-export default function VoterSearch({ encadrants, communes, onAssignmentChange }) {
+export default function VoterSearch({ session, encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
   const [selectedCommune, setSelectedCommune] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); 
@@ -22,7 +22,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
   const [telEncadrant, setTelEncadrant] = useState('');
-  const [telElecteur, setTelElecteur] = useState('');
   const [forceOverwrite, setForceOverwrite] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +47,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
       const data = await res.json();
       setVoters(data.voters || []);
       setTotal(data.total || 0);
-      // NOTE: We DO NOT reset selectedCins here so selections persist across searches!
     } catch (err) {
       console.error('Erreur recherche électeurs:', err);
     } finally {
@@ -69,10 +67,8 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     const allVisibleSelected = visibleCins.every(cin => selectedCins.includes(cin));
 
     if (allVisibleSelected) {
-      // Remove visible CINs from selection
       setSelectedCins(prev => prev.filter(cin => !visibleCins.includes(cin)));
     } else {
-      // Add visible CINs to selection without duplicates
       setSelectedCins(prev => Array.from(new Set([...prev, ...visibleCins])));
     }
   };
@@ -80,7 +76,6 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
   const handleOpenAssignModal = (voter) => {
     setIsBulkMode(false);
     setSelectedVoter(voter);
-    setTelElecteur(voter.affecte_tel_electeur || '');
     setVerifyData(null);
     setForceOverwrite(!!voter.affecte_encadrant);
     
@@ -134,6 +129,8 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
     e.preventDefault();
     if (!selectedEncadrant) return;
 
+    const operatorName = session?.username || session?.nom_complet || 'admin';
+
     setSubmitting(true);
     try {
       if (isBulkMode) {
@@ -156,6 +153,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
             encadrant: selectedEncadrant,
             tel: telEncadrant,
             overwrite: forceOverwrite && !excludeDuplicatesOnly,
+            nom_pc: operatorName
           }),
         });
 
@@ -182,8 +180,8 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
             cin: selectedVoter.CIN,
             encadrant: selectedEncadrant,
             tel: telEncadrant,
-            tel_electeur: telElecteur,
             overwrite: forceOverwrite || !!selectedVoter.affecte_encadrant,
+            nom_pc: operatorName
           }),
         });
 

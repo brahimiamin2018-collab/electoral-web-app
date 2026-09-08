@@ -135,6 +135,7 @@ export default function App() {
 
         {activeTab === 'voters' && (
           <VoterSearch
+            session={session}
             encadrants={encadrants}
             communes={communes}
             onAssignmentChange={loadAllData}
