@@ -25,9 +25,6 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
             
             {/* Logo & Application Title */}
             <div className="flex items-center space-x-2.5">
-              <div className="p-2 sm:p-3 bg-gradient-to-tr from-sky-500 to-blue-600 rounded-xl shadow-lg shadow-sky-500/20 text-white">
-                <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
-              </div>
               <div>
                 <h1 className="text-base sm:text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-sky-400 bg-clip-text text-transparent">
                   Gestion Électorale
