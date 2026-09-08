@@ -85,7 +85,7 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
         </div>
 
         {/* Printable Area: Starting right at top 0 with zero top margin */}
-        <div id="printable-encadrant-sheet" className="flex-1 overflow-y-auto bg-white text-slate-900 p-2 rounded-xl print:p-0 print:m-0 print:border-none print:overflow-visible">
+        <div id="printable-encadrant-sheet" className="flex-1 overflow-y-auto bg-white text-slate-900 p-2 rounded-xl print:p-0 print:m-0 print:border-none print:overflow-visible print:absolute print:top-0 print:left-0 print:w-full">
           
           {/* Encadrant Info Card starting right at top edge */}
           <div className="bg-slate-100 p-3 rounded-lg border border-slate-300 mb-3 grid grid-cols-3 gap-4 text-xs font-sans print:m-0 print:mb-3">

@@ -137,7 +137,7 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
         </div>
       </div>
 
-      {/* Assignments Table */}
+      {/* Assignments Table & Mobile Card View */}
       <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden print:hidden">
         {loading ? (
           <div className="p-12 text-center text-slate-400">
@@ -149,61 +149,110 @@ export default function Assignments({ encadrants, communes, onAssignmentChange }
             Aucune affectation correspondant aux critères de recherche.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900/90 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800">
-                <tr>
-                  <th className="px-6 py-4">CIN</th>
-                  <th className="px-6 py-4">Électeur</th>
-                  <th className="px-6 py-4">Commune</th>
-                  <th className="px-6 py-4">Bureau de Vote</th>
-                  <th className="px-6 py-4">Encadrant Affecté & Téléphone</th>
-                  <th className="px-6 py-4">Date Inscription</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {assignments.map((item) => (
-                  <tr key={item.CIN} className="hover:bg-slate-900/40 transition-colors">
-                    <td className="px-6 py-4 font-mono font-bold text-sky-400">
-                      {item.CIN}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-white">{item.PRENOM} {item.NOM}</div>
-                      {item.NUM_ORDRE && <div className="text-xs text-slate-500 font-mono">N° {item.NUM_ORDRE}</div>}
-                    </td>
-                    <td className="px-6 py-4 text-slate-300">
-                      {item.COMMUNE || 'N/C'}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-400 max-w-xs truncate">
-                      {item.LIEU_BUREAU_VOTE || 'N/C'}
-                    </td>
-                    <td className="px-6 py-4">
+          <>
+            {/* Mobile View: Cards */}
+            <div className="md:hidden p-4 space-y-4">
+              {assignments.map((item) => (
+                <div key={item.CIN} className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3 shadow-md">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-sky-400 text-xs bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+                      CIN: {item.CIN}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
+                      className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                      title="Annuler cette affectation"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-white text-base">{item.PRENOM} {item.NOM}</h4>
+                    {item.NUM_ORDRE && <span className="text-[11px] text-slate-500 font-mono">N° {item.NUM_ORDRE}</span>}
+                  </div>
+
+                  <div className="text-xs text-slate-400 space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
+                    <div>Commune: <strong className="text-slate-200">{item.COMMUNE || 'N/C'}</strong></div>
+                    <div>Bureau: <strong className="text-slate-200">{item.LIEU_BUREAU_VOTE || 'N/C'}</strong></div>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/20 text-xs">
+                    <div>
+                      <div className="text-[10px] text-slate-400">Encadrant Affecté :</div>
                       <div className="font-bold text-emerald-400">{item.ENCADRANT}</div>
-                      {item.TEL && (
-                        <div className="text-xs text-slate-300 font-semibold flex items-center gap-1 mt-0.5">
-                          <Phone className="w-3 h-3 text-sky-400" />
-                          <span>{item.TEL}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-400">
-                      {item.DATE_INSCRIPTION ? item.DATE_INSCRIPTION.substring(0, 16) : 'N/C'}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
-                        className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                        title="Annuler cette affectation"
+                    </div>
+                    {item.TEL && (
+                      <a
+                        href={`tel:${item.TEL}`}
+                        className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>Appeler</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View: Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-900/90 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th className="px-6 py-4">CIN</th>
+                    <th className="px-6 py-4">Électeur</th>
+                    <th className="px-6 py-4">Commune</th>
+                    <th className="px-6 py-4">Bureau de Vote</th>
+                    <th className="px-6 py-4">Encadrant Affecté & Téléphone</th>
+                    <th className="px-6 py-4">Date Inscription</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {assignments.map((item) => (
+                    <tr key={item.CIN} className="hover:bg-slate-900/40 transition-colors">
+                      <td className="px-6 py-4 font-mono font-bold text-sky-400">
+                        {item.CIN}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-white">{item.PRENOM} {item.NOM}</div>
+                        {item.NUM_ORDRE && <div className="text-xs text-slate-500 font-mono">N° {item.NUM_ORDRE}</div>}
+                      </td>
+                      <td className="px-6 py-4 text-slate-300">
+                        {item.COMMUNE || 'N/C'}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-slate-400 max-w-xs truncate">
+                        {item.LIEU_BUREAU_VOTE || 'N/C'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-emerald-400">{item.ENCADRANT}</div>
+                        {item.TEL && (
+                          <a href={`tel:${item.TEL}`} className="text-xs text-slate-300 font-semibold flex items-center gap-1 mt-0.5 hover:text-sky-400">
+                            <Phone className="w-3 h-3 text-sky-400" />
+                            <span>{item.TEL}</span>
+                          </a>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-slate-400">
+                        {item.DATE_INSCRIPTION ? item.DATE_INSCRIPTION.substring(0, 16) : 'N/C'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleDeleteAssignment(item.CIN, `${item.PRENOM} ${item.NOM}`)}
+                          className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                          title="Annuler cette affectation"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

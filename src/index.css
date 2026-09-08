@@ -58,7 +58,8 @@
 /* Print Specific Rules - Elimination Total des Marges et Espaces en Haut */
 @media print {
   @page {
-    margin: 4mm 5mm 5mm 5mm;
+    size: A4 portrait;
+    margin: 5mm 5mm 5mm 5mm;
   }
 
   html, body {
@@ -67,22 +68,40 @@
     margin: 0 !important;
     padding: 0 !important;
     height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
   }
 
-  /* Hide all UI elements */
+  /* Hide all non-printable UI elements */
   body * {
     visibility: hidden !important;
   }
 
-  /* Make printable sheet visible & force top: 0 */
+  /* Reset all fixed dialog/modal parent containers so they do not add top offset or center vertically */
+  .fixed,
+  .backdrop-blur-md,
+  .glass-panel {
+    position: static !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Make printable sheet visible & force top 0 */
   #printable-encadrant-sheet,
   #printable-encadrant-sheet * {
     visibility: visible !important;
   }
 
   #printable-encadrant-sheet {
-    position: fixed !important;
+    position: absolute !important;
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
@@ -92,5 +111,6 @@
     background: #ffffff !important;
     box-shadow: none !important;
     border: none !important;
+    overflow: visible !important;
   }
 }

@@ -323,21 +323,30 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
 
       {/* Floating Action Bar for PERSISTENT Bulk Assignment */}
       {selectedCins.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-slate-900/95 border-2 border-sky-500 text-white px-6 py-3.5 rounded-2xl shadow-2xl backdrop-blur-md flex items-center space-x-6 animate-slide-up">
-          <div className="flex items-center space-x-3 text-sm font-semibold">
-            <span className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center font-extrabold text-sm shadow-md shadow-sky-500/40">
-              {selectedCins.length}
-            </span>
-            <div>
-              <div>électeurs accumulés en mémoire</div>
-              <div className="text-[10px] text-slate-400 font-normal">Conservés à travers vos recherches</div>
+        <div className="fixed bottom-20 md:bottom-6 left-3 right-3 md:left-1/2 md:right-auto md:-translate-x-1/2 z-40 bg-slate-900/95 border-2 border-sky-500 text-white px-4 md:px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 animate-slide-up">
+          <div className="flex items-center space-x-3 text-xs sm:text-sm font-semibold w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center space-x-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-sky-500 text-white flex items-center justify-center font-extrabold text-xs sm:text-sm shadow-md shadow-sky-500/40">
+                {selectedCins.length}
+              </span>
+              <div>
+                <div className="leading-tight">Électeurs sélectionnés</div>
+                <div className="text-[10px] text-slate-400 font-normal hidden sm:block">Conservés à travers vos recherches</div>
+              </div>
             </div>
+            <button
+              onClick={() => setSelectedCins([])}
+              className="sm:hidden text-xs text-rose-400 hover:text-rose-300 px-2 py-1 border border-rose-500/20 bg-rose-500/10 rounded-lg flex items-center space-x-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Vider</span>
+            </button>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
             <button
               onClick={handleOpenBulkAssignModal}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-bold shadow-lg shadow-sky-500/30 transition transform hover:scale-105"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-bold shadow-lg shadow-sky-500/30 transition transform hover:scale-105"
             >
               <UserCheck className="w-4 h-4" />
               <span>Affecter les {selectedCins.length} électeurs</span>
@@ -345,7 +354,7 @@ export default function VoterSearch({ encadrants, communes, onAssignmentChange }
 
             <button
               onClick={() => setSelectedCins([])}
-              className="text-xs text-rose-400 hover:text-rose-300 px-3 py-2 border border-rose-500/20 bg-rose-500/10 rounded-xl flex items-center space-x-1"
+              className="hidden sm:flex text-xs text-rose-400 hover:text-rose-300 px-3 py-2 border border-rose-500/20 bg-rose-500/10 rounded-xl items-center space-x-1"
               title="Vider toute la sélection accumulée"
             >
               <Trash2 className="w-3.5 h-3.5" />
