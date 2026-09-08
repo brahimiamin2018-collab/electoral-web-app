@@ -45,26 +45,6 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
               </div>
             </div>
 
-            {/* Quick Metrics Bar (Visible for Admin on desktop) */}
-            {stats && userRole === 'admin' && (
-              <div className="hidden xl:flex items-center space-x-6 text-xs bg-slate-900/60 py-2 px-4 rounded-xl border border-slate-800">
-                <div>
-                  <span className="text-slate-400">Total BDD:</span>
-                  <span className="ml-2 font-bold text-white">{stats.totalVoters ? stats.totalVoters.toLocaleString() : 0}</span>
-                </div>
-                <div className="h-4 w-px bg-slate-800"></div>
-                <div>
-                  <span className="text-slate-400">Affectés:</span>
-                  <span className="ml-2 font-bold text-sky-400">{stats.totalAssignments ? stats.totalAssignments.toLocaleString() : 0}</span>
-                </div>
-                <div className="h-4 w-px bg-slate-800"></div>
-                <div>
-                  <span className="text-slate-400">Taux:</span>
-                  <span className="ml-2 font-bold text-emerald-400">{stats.assignmentRate}%</span>
-                </div>
-              </div>
-            )}
-
             {/* Desktop Navigation & Session Actions */}
             <div className="flex items-center space-x-2 sm:space-x-3">
               <nav className="hidden md:flex items-center space-x-1 sm:space-x-2">

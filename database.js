@@ -359,11 +359,13 @@ export async function getEncadrants() {
       if (a.encadrant) countMap[a.encadrant] = (countMap[a.encadrant] || 0) + 1;
     });
 
-    return (encs || []).map(e => ({
-      nom: e.nomencadrant,
-      tel: e.tel_encadrant,
-      count_affectations: countMap[e.nomencadrant] || 0
-    }));
+    return (encs || [])
+      .filter(e => e.nomencadrant && !e.nomencadrant.startsWith('__USER__:'))
+      .map(e => ({
+        nom: e.nomencadrant,
+        tel: e.tel_encadrant,
+        count_affectations: countMap[e.nomencadrant] || 0
+      }));
   }
 
   const sql = `
@@ -372,6 +374,7 @@ export async function getEncadrants() {
            COUNT(a.CIN) as count_affectations
     FROM LISTE_ENCADRANTS e
     LEFT JOIN AFFECTATIONS_ENCADRANTS a ON e.NomEncadrant = a.ENCADRANT
+    WHERE e.NomEncadrant NOT LIKE '__USER__:%'
     GROUP BY e.NomEncadrant
     ORDER BY e.NomEncadrant ASC
   `;
@@ -808,24 +811,29 @@ export async function loginUser(username, password) {
     return { username: 'visiteur', role: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)' };
   }
 
+  // Check in-memory persistent list
+  const localList = getPersistentUsersList();
+  const foundLocal = localList.find(u => u.username.toLowerCase() === cleanUser);
+  if (foundLocal && foundLocal.password === cleanPass) {
+    return { username: foundLocal.username, role: foundLocal.role, nom_complet: foundLocal.nom_complet || foundLocal.username };
+  }
+
   // Cloud Supabase check
   if (isCloudMode) {
     try {
-      const { data: user, error } = await supabase.from('utilisateurs').select('*').eq('username', cleanUser).maybeSingle();
-      if (!error && user) {
-        if (user.password === cleanPass) {
-          return { username: user.username, role: user.role, nom_complet: user.nom_complet || user.username };
+      const { data: cloudRow, error } = await supabase
+        .from('liste_encadrants')
+        .select('*')
+        .eq('nomencadrant', `__USER__:${cleanUser}`)
+        .maybeSingle();
+
+      if (!error && cloudRow && cloudRow.tel_encadrant) {
+        const u = JSON.parse(cloudRow.tel_encadrant);
+        if (u && u.password === cleanPass) {
+          return { username: u.username, role: u.role, nom_complet: u.nom_complet || u.username };
         }
-        return null;
       }
     } catch (e) {}
-  }
-
-  // Persistent disk / SQLite check
-  const allLocal = getPersistentUsersList();
-  const found = allLocal.find(u => u.username.toLowerCase() === cleanUser);
-  if (found && found.password === cleanPass) {
-    return { username: found.username, role: found.role, nom_complet: found.nom_complet || found.username };
   }
 
   return null;
@@ -835,34 +843,50 @@ export async function getUsers() {
   const localList = getPersistentUsersList();
   const userMap = {};
 
-  // 1. First load from local persistent storage (users_db.json + default accounts)
+  // 1. Load from local persistent storage (users_db.json + default accounts)
   localList.forEach(u => {
     userMap[u.username.toLowerCase()] = {
       username: u.username,
+      password: u.password,
       role: u.role,
       nom_complet: u.nom_complet || u.username,
       created_at: u.created_at || new Date().toISOString()
     };
   });
 
-  // 2. Merge with Supabase Cloud users if accessible
+  // 2. Sync with Supabase Cloud user entries
   if (isCloudMode) {
     try {
-      const { data: cloudUsers, error } = await supabase.from('utilisateurs').select('*');
-      if (!error && Array.isArray(cloudUsers) && cloudUsers.length > 0) {
-        cloudUsers.forEach(u => {
-          userMap[u.username.toLowerCase()] = {
-            username: u.username,
-            role: u.role,
-            nom_complet: u.nom_complet || u.username,
-            created_at: u.created_at || new Date().toISOString()
-          };
+      const { data: cloudRows, error } = await supabase
+        .from('liste_encadrants')
+        .select('*')
+        .like('nomencadrant', '__USER__:%');
+
+      if (!error && Array.isArray(cloudRows)) {
+        cloudRows.forEach(row => {
+          try {
+            const u = JSON.parse(row.tel_encadrant);
+            if (u && u.username) {
+              userMap[u.username.toLowerCase()] = {
+                username: u.username,
+                password: u.password,
+                role: u.role,
+                nom_complet: u.nom_complet || u.username,
+                created_at: u.created_at || new Date().toISOString()
+              };
+            }
+          } catch (e) {}
         });
       }
     } catch (e) {}
   }
 
-  return Object.values(userMap);
+  return Object.values(userMap).map(u => ({
+    username: u.username,
+    role: u.role,
+    nom_complet: u.nom_complet || u.username,
+    created_at: u.created_at
+  }));
 }
 
 export async function addUser({ username, password, role = 'utilisateur', nom_complet = '' }) {
@@ -875,17 +899,22 @@ export async function addUser({ username, password, role = 'utilisateur', nom_co
     created_at: new Date().toISOString()
   };
 
-  // Always save locally to users_db.json first
+  // 1. Save locally to users_db.json
   savePersistentUserObj(newUserObj);
 
-  // Sync to Cloud Supabase if available
+  // 2. Sync to Supabase Cloud globally for all devices
   if (isCloudMode) {
     try {
-      await supabase.from('utilisateurs').upsert(newUserObj);
+      await supabase.from('liste_encadrants').upsert([
+        {
+          nomencadrant: `__USER__:${cleanUser}`,
+          tel_encadrant: JSON.stringify(newUserObj)
+        }
+      ]);
     } catch (e) {}
   }
 
-  // Sync to local SQLite table
+  // 3. Save to local SQLite
   try {
     const sql = `INSERT OR REPLACE INTO UTILISATEURS (USERNAME, PASSWORD, ROLE, NOM_COMPLET, CREATED_AT) VALUES (?, ?, ?, ?, ?)`;
     await runLocal(sql, [cleanUser, password.trim(), role, nom_complet.trim() || cleanUser, new Date().toISOString()]);
@@ -904,13 +933,13 @@ export async function deleteUser(username) {
 
   if (isCloudMode) {
     try {
-      await supabase.from('utilisateurs').delete().eq('username', cleanUser);
-    } catch (e) {}
-  } else {
-    try {
-      await runLocal(`DELETE FROM UTILISATEURS WHERE LOWER(USERNAME) = ?`, [cleanUser]);
+      await supabase.from('liste_encadrants').delete().eq('nomencadrant', `__USER__:${cleanUser}`);
     } catch (e) {}
   }
+
+  try {
+    await runLocal(`DELETE FROM UTILISATEURS WHERE LOWER(USERNAME) = ?`, [cleanUser]);
+  } catch (e) {}
 
   return { success: true };
 }
