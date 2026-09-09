@@ -336,21 +336,25 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
 
                     {/* Quick Vote Toggle Button (Mobile) */}
                     <button
-                      onClick={() => handleToggleVote(item.CIN, !!item.has_voted)}
-                      className={`w-full py-2.5 px-3 rounded-xl flex items-center justify-center space-x-2 text-xs font-bold transition shadow-sm ${
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleVote(item.CIN, !!item.has_voted);
+                      }}
+                      className={`w-full py-3 px-4 rounded-xl flex items-center justify-center space-x-2 text-sm font-extrabold transition shadow-md touch-manipulation active:scale-95 ${
                         item.has_voted
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-emerald-400 shadow-emerald-600/40'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
                       }`}
                     >
                       {item.has_voted ? (
                         <>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                          <CheckCircle2 className="w-5 h-5 text-emerald-200" />
                           <span>✓ A VOTÉ 🗳️</span>
                         </>
                       ) : (
                         <>
-                          <Circle className="w-4 h-4 text-slate-400" />
+                          <Circle className="w-5 h-5 text-slate-400" />
                           <span>🗳️ Marquer comme Voté</span>
                         </>
                       )}
@@ -496,6 +500,43 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
           </>
         )}
       </div>
+
+      {/* Mobile Floating Action Bar for Bulk Voting */}
+      {selectedCins.length > 0 && !isVisiteur && (
+        <div className="md:hidden fixed bottom-4 left-3 right-3 z-40 bg-slate-900/95 border-2 border-emerald-500 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-2 animate-slide-up">
+          <div className="text-xs font-bold flex items-center space-x-1.5">
+            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-extrabold text-xs">
+              {selectedCins.length}
+            </span>
+            <span>sélectionné(s)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => handleBulkVote(true)}
+              className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center space-x-1"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Voté 🗳️</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkVote(false)}
+              className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700"
+            >
+              <span>Non Voté</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelBulkAssignments}
+              className="p-2 rounded-xl bg-rose-600 text-white text-xs font-bold"
+              title="Annuler affectation"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Print Encadrant Sheet Modal */}
       <PrintEncadrantSheet

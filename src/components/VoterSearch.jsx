@@ -23,6 +23,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
   const [telEncadrant, setTelEncadrant] = useState('');
+  const [telElecteur, setTelElecteur] = useState('');
   const [forceOverwrite, setForceOverwrite] = useState(false);
 
   // Inline New Encadrant state
