@@ -59,7 +59,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 5mm;
+    margin: 10mm;
   }
 
   /* 1. Completely collapse #root and all main UI components during print */
