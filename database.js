@@ -103,6 +103,10 @@ export async function initDb() {
     await runLocal(`ALTER TABLE AFFECTATIONS_ENCADRANTS ADD COLUMN TEL_ELECTEUR TEXT`);
   } catch (e) {}
 
+  try {
+    await runLocal(`ALTER TABLE AFFECTATIONS_ENCADRANTS ADD COLUMN HAS_VOTED INTEGER DEFAULT 0`);
+  } catch (e) {}
+
   await runLocal(`
     CREATE TABLE IF NOT EXISTS LISTE_ENCADRANTS (
       NomEncadrant TEXT PRIMARY KEY,
@@ -460,7 +464,7 @@ export async function deleteEncadrant(nom) {
   return await runLocal(sql, [nom]);
 }
 
-export async function getAssignments({ encadrant = '', commune = '', q = '', limit = 1000, offset = 0 }) {
+export async function getAssignments({ encadrant = '', commune = '', q = '', vote = 'all', limit = 1000, offset = 0 }) {
   if (isCloudMode) {
     let queryBuilder = supabase.from('affectations_encadrants').select('*', { count: 'exact' });
 
@@ -476,19 +480,29 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', lim
     const { data: rawAffs, count, error } = await queryBuilder;
     if (error) throw new Error(error.message);
 
-    const items = (rawAffs || []).map(a => ({
-      CIN: a.cin,
-      NUM_ORDRE: a.num_ordre,
-      PRENOM: a.prenom,
-      NOM: a.nom,
-      COMMUNE: a.commune,
-      LIEU_BUREAU_VOTE: a.lieu_bureau_vote,
-      ENCADRANT: a.encadrant,
-      TEL: a.tel,
-      TEL_ELECTEUR: a.tel_electeur,
-      NOM_PC: a.nom_pc,
-      DATE_INSCRIPTION: a.date_inscription
-    }));
+    let items = (rawAffs || []).map(a => {
+      const hasVoted = (a.tel_electeur || '').includes('VOTED');
+      return {
+        CIN: a.cin,
+        NUM_ORDRE: a.num_ordre,
+        PRENOM: a.prenom,
+        NOM: a.nom,
+        COMMUNE: a.commune,
+        LIEU_BUREAU_VOTE: a.lieu_bureau_vote,
+        ENCADRANT: a.encadrant,
+        TEL: a.tel,
+        TEL_ELECTEUR: (a.tel_electeur || '').replace(/VOTED\|?/g, ''),
+        NOM_PC: a.nom_pc,
+        DATE_INSCRIPTION: a.date_inscription,
+        has_voted: hasVoted
+      };
+    });
+
+    if (vote === 'voted') {
+      items = items.filter(i => i.has_voted);
+    } else if (vote === 'not_voted') {
+      items = items.filter(i => !i.has_voted);
+    }
 
     return { items, total: count || 0 };
   }
@@ -512,6 +526,12 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', lim
     params.push(term, term, term, term, term);
   }
 
+  if (vote === 'voted') {
+    whereClauses.push(`(a.HAS_VOTED = 1 OR a.TEL_ELECTEUR LIKE '%VOTED%')`);
+  } else if (vote === 'not_voted') {
+    whereClauses.push(`(a.HAS_VOTED IS NULL OR a.HAS_VOTED = 0) AND (a.TEL_ELECTEUR IS NULL OR a.TEL_ELECTEUR NOT LIKE '%VOTED%')`);
+  }
+
   const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
   const sql = `
@@ -523,7 +543,12 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', lim
   `;
   params.push(Number(limit), Number(offset));
 
-  const items = await queryLocal(sql, params);
+  const rawRows = await queryLocal(sql, params);
+  const items = (rawRows || []).map(a => ({
+    ...a,
+    has_voted: !!a.HAS_VOTED || (a.TEL_ELECTEUR || '').includes('VOTED'),
+    TEL_ELECTEUR: (a.TEL_ELECTEUR || '').replace(/VOTED\|?/g, '')
+  }));
 
   const countSql = `SELECT COUNT(*) as total FROM AFFECTATIONS_ENCADRANTS a ${whereStr}`;
   const countParams = params.slice(0, -2);
@@ -533,6 +558,49 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', lim
     items,
     total: countRow ? countRow.total : 0
   };
+}
+
+export async function toggleVoterVote({ cin, has_voted }) {
+  const isVoted = has_voted === true || has_voted === 'true' || has_voted === 1;
+  const votedInt = isVoted ? 1 : 0;
+
+  if (isCloudMode) {
+    const { data: aff } = await supabase.from('affectations_encadrants').select('tel_electeur').eq('cin', cin).maybeSingle();
+    let currentTel = aff ? (aff.tel_electeur || '') : '';
+    let newTel = currentTel;
+    if (isVoted) {
+      if (!currentTel.includes('VOTED')) {
+        newTel = currentTel ? `VOTED|${currentTel}` : 'VOTED';
+      }
+    } else {
+      newTel = currentTel.replace(/VOTED\|?/g, '').trim();
+    }
+    const { error } = await supabase.from('affectations_encadrants').update({ tel_electeur: newTel }).eq('cin', cin);
+    if (error) throw new Error(error.message);
+    return { success: true, cin, has_voted: isVoted };
+  }
+
+  const sql = `UPDATE AFFECTATIONS_ENCADRANTS SET HAS_VOTED = ? WHERE CIN = ?`;
+  await runLocal(sql, [votedInt, cin]);
+  return { success: true, cin, has_voted: isVoted };
+}
+
+export async function bulkToggleVoterVote({ cins = [], has_voted = true }) {
+  if (!cins || cins.length === 0) return { success: true, count: 0 };
+  const isVoted = has_voted === true || has_voted === 'true' || has_voted === 1;
+  const votedInt = isVoted ? 1 : 0;
+
+  if (isCloudMode) {
+    for (const cin of cins) {
+      await toggleVoterVote({ cin, has_voted: isVoted });
+    }
+    return { success: true, count: cins.length, has_voted: isVoted };
+  }
+
+  const placeholders = cins.map(() => '?').join(',');
+  const sql = `UPDATE AFFECTATIONS_ENCADRANTS SET HAS_VOTED = ? WHERE CIN IN (${placeholders})`;
+  await runLocal(sql, [votedInt, ...cins]);
+  return { success: true, count: cins.length, has_voted: isVoted };
 }
 
 export async function verifyBulkAssignments({ cins = [] }) {

@@ -21,6 +21,8 @@ import {
   deleteAssignment,
   deleteMultipleAssignments,
   deleteAssignmentsByEncadrant,
+  toggleVoterVote,
+  bulkToggleVoterVote,
   getCommunes,
   loginUser,
   getUsers,
@@ -172,8 +174,31 @@ app.delete('/api/encadrants/:nom', async (req, res) => {
 // Get List of Assignments
 app.get('/api/assignments', async (req, res) => {
   try {
-    const { encadrant, commune, q, limit, offset } = req.query;
-    const result = await getAssignments({ encadrant, commune, q, limit, offset });
+    const { encadrant, commune, q, vote, limit, offset } = req.query;
+    const result = await getAssignments({ encadrant, commune, q, vote, limit, offset });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Toggle Voting Status for Single Voter
+app.post('/api/assignments/:cin/toggle-vote', async (req, res) => {
+  try {
+    const { cin } = req.params;
+    const { has_voted } = req.body;
+    const result = await toggleVoterVote({ cin, has_voted });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bulk Toggle Voting Status for Selected Voters
+app.post('/api/assignments/bulk-vote', async (req, res) => {
+  try {
+    const { cins, has_voted } = req.body;
+    const result = await bulkToggleVoterVote({ cins, has_voted });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
