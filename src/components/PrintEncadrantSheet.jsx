@@ -112,10 +112,10 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                 <thead>
                   <tr className="bg-white text-black font-bold uppercase text-[10px] tracking-wider border-b-2 border-black">
                     <th className="p-2 text-center w-8 border border-black">N°</th>
-                    <th className="p-2 border border-black w-24">CIN</th>
+                    <th className="p-2 border border-black w-20">CIN</th>
                     <th className="p-2 border border-black w-44">Nom & Prénom</th>
-                    <th className="p-2 border border-black">NBV</th>
-                    <th className="p-2 text-center w-16 border border-black">REÇU</th>
+                    <th className="p-2 border border-black w-48">NBV</th>
+                    <th className="p-2 text-center w-14 border border-black">REÇU</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black border border-black">
@@ -123,8 +123,8 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                     <tr key={item.CIN || idx} className="bg-white border-b border-black">
                       <td className="p-2 text-center font-mono font-bold text-black border border-black">{idx + 1}</td>
                       <td className="p-2 font-mono font-bold text-black border border-black whitespace-nowrap">{item.CIN}</td>
-                      <td className="p-2 font-bold text-black border border-black max-w-[170px] truncate">{item.PRENOM} {item.NOM}</td>
-                      <td className="p-2 text-black border border-black">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
+                      <td className="p-2 font-bold text-black border border-black max-w-[160px] truncate">{item.PRENOM} {item.NOM}</td>
+                      <td className="p-2 text-black border border-black max-w-[180px] truncate">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
                       <td className="p-2 text-center font-extrabold text-black border border-black">
                         {item.has_voted ? 'OK' : ''}
                       </td>
@@ -160,10 +160,10 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
             <thead>
               <tr className="bg-white text-black font-bold uppercase text-[10px] tracking-wider border-b-2 border-black">
                 <th className="p-2 text-center w-8 border border-black">N°</th>
-                <th className="p-2 border border-black w-24">CIN</th>
+                <th className="p-2 border border-black w-20">CIN</th>
                 <th className="p-2 border border-black w-44">Nom & Prénom</th>
-                <th className="p-2 border border-black">NBV</th>
-                <th className="p-2 text-center w-16 border border-black">REÇU</th>
+                <th className="p-2 border border-black w-48">NBV</th>
+                <th className="p-2 text-center w-14 border border-black">REÇU</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black border border-black">
@@ -171,8 +171,8 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                 <tr key={item.CIN || idx} className="bg-white border-b border-black">
                   <td className="p-2 text-center font-mono font-bold text-black border border-black">{idx + 1}</td>
                   <td className="p-2 font-mono font-bold text-black border border-black whitespace-nowrap">{item.CIN}</td>
-                  <td className="p-2 font-bold text-black border border-black max-w-[170px] truncate">{item.PRENOM} {item.NOM}</td>
-                  <td className="p-2 text-black border border-black">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
+                  <td className="p-2 font-bold text-black border border-black max-w-[160px] truncate">{item.PRENOM} {item.NOM}</td>
+                  <td className="p-2 text-black border border-black max-w-[180px] truncate">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
                   <td className="p-2 text-center font-extrabold text-black border border-black">
                     {item.has_voted ? 'OK' : ''}
                   </td>
