@@ -202,13 +202,20 @@ export async function getStats() {
   };
 }
 
-export async function searchVoters({ q = '', commune = '', status = 'all', limit = 60, offset = 0 }) {
+export async function searchVoters({ q = '', commune = '', status = 'all', exact = false, limit = 60, offset = 0 }) {
+  const cleanQ = (q || '').trim();
+  const isExactMode = exact === true || exact === 'true';
+
   if (isCloudMode) {
     let queryBuilder = supabase.from('bdd_mere').select('*', { count: 'exact' });
 
-    if (q && q.trim()) {
-      const term = `%${q.trim()}%`;
-      queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term}`);
+    if (cleanQ) {
+      if (isExactMode) {
+        queryBuilder = queryBuilder.or(`cin.ilike.${cleanQ},nom.ilike.${cleanQ},prenom.ilike.${cleanQ}`);
+      } else {
+        const term = `%${cleanQ}%`;
+        queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term}`);
+      }
     }
 
     if (commune && commune.trim()) {
@@ -233,7 +240,7 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
       }
     }
 
-    const voters = (rawVoters || []).map(v => {
+    let voters = (rawVoters || []).map(v => {
       const aff = affMap[v.cin];
       const cleanCin = (v.cin || '').split('#')[0] === 'EMPTY' ? '' : (v.cin || '').split('#')[0];
       return {
@@ -256,6 +263,19 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
       };
     });
 
+    if (cleanQ) {
+      const upperQ = cleanQ.toUpperCase();
+      voters.sort((a, b) => {
+        const aCin = (a.CIN || '').toUpperCase();
+        const bCin = (b.CIN || '').toUpperCase();
+        if (aCin === upperQ && bCin !== upperQ) return -1;
+        if (bCin === upperQ && aCin !== upperQ) return 1;
+        if (aCin.startsWith(upperQ) && !bCin.startsWith(upperQ)) return -1;
+        if (bCin.startsWith(upperQ) && !aCin.startsWith(upperQ)) return 1;
+        return 0;
+      });
+    }
+
     let filteredVoters = voters;
     if (status === 'unassigned') {
       filteredVoters = voters.filter(v => !v.affecte_encadrant);
@@ -269,10 +289,15 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
   let whereClauses = [];
   let params = [];
 
-  if (q && q.trim()) {
-    const term = `%${q.trim()}%`;
-    whereClauses.push(`(b.CIN LIKE ? OR b.NOM LIKE ? OR b.PRENOM LIKE ? OR (b.PRENOM || ' ' || b.NOM) LIKE ? OR (b.NOM || ' ' || b.PRENOM) LIKE ?)`);
-    params.push(term, term, term, term, term);
+  if (cleanQ) {
+    if (isExactMode) {
+      whereClauses.push(`(UPPER(b.CIN) = UPPER(?) OR UPPER(b.NOM) = UPPER(?) OR UPPER(b.PRENOM) = UPPER(?))`);
+      params.push(cleanQ, cleanQ, cleanQ);
+    } else {
+      const term = `%${cleanQ}%`;
+      whereClauses.push(`(b.CIN LIKE ? OR b.NOM LIKE ? OR b.PRENOM LIKE ? OR (b.PRENOM || ' ' || b.NOM) LIKE ? OR (b.NOM || ' ' || b.PRENOM) LIKE ?)`);
+      params.push(term, term, term, term, term);
+    }
   }
 
   if (commune && commune.trim()) {
@@ -288,6 +313,20 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
 
   const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
+  let orderBySql = 'ORDER BY b.ID ASC';
+  let orderParams = [];
+  if (cleanQ) {
+    orderBySql = `
+      ORDER BY 
+        CASE 
+          WHEN UPPER(b.CIN) = UPPER(?) THEN 0 
+          WHEN UPPER(b.CIN) LIKE UPPER(?) THEN 1 
+          ELSE 2 
+        END ASC, b.ID ASC
+    `;
+    orderParams.push(cleanQ, `${cleanQ}%`);
+  }
+
   const sql = `
     SELECT b.*, 
            a.ENCADRANT as affecte_encadrant, 
@@ -297,11 +336,12 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
     FROM BDD_MERE b
     LEFT JOIN AFFECTATIONS_ENCADRANTS a ON b.CIN = a.CIN
     ${whereStr}
+    ${orderBySql}
     LIMIT ? OFFSET ?
   `;
-  params.push(Number(limit), Number(offset));
 
-  const voters = await queryLocal(sql, params);
+  const finalParams = [...params, ...orderParams, Number(limit), Number(offset)];
+  const voters = await queryLocal(sql, finalParams);
 
   const countSql = `
     SELECT COUNT(*) as total 
@@ -309,8 +349,7 @@ export async function searchVoters({ q = '', commune = '', status = 'all', limit
     LEFT JOIN AFFECTATIONS_ENCADRANTS a ON b.CIN = a.CIN
     ${whereStr}
   `;
-  const countParams = params.slice(0, -2);
-  const countRow = await getLocal(countSql, countParams);
+  const countRow = await getLocal(countSql, params);
 
   return {
     voters,

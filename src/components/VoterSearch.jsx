@@ -3,6 +3,7 @@ import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, 
 
 export default function VoterSearch({ session, isVisiteur, encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
+  const [exactSearch, setExactSearch] = useState(false);
   const [selectedCommune, setSelectedCommune] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); 
   
@@ -38,13 +39,14 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
       fetchVoters();
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, selectedCommune, statusFilter]);
+  }, [query, exactSearch, selectedCommune, statusFilter]);
 
   const fetchVoters = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (query) params.append('q', query);
+      if (exactSearch) params.append('exact', 'true');
       if (selectedCommune) params.append('commune', selectedCommune);
       if (statusFilter) params.append('status', statusFilter);
       params.append('limit', '60');
@@ -305,23 +307,36 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
         {/* Search Inputs & Anti-Duplicate Filter Bar */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
           
-          <div className="md:col-span-6 relative">
-            <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Tapez un nom ou CIN (ex: SH10) pour ajouter à votre sélection..."
-              className="w-full pl-12 pr-4 py-3 glass-input rounded-xl text-sm focus:ring-2 focus:ring-sky-500/50"
-            />
-            {query && (
-              <button 
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-3.5 text-slate-500 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          <div className="md:col-span-6 space-y-1.5">
+            <div className="relative">
+              <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Tapez un nom ou CIN (ex: JF1119)..."
+                className="w-full pl-12 pr-4 py-3 glass-input rounded-xl text-sm focus:ring-2 focus:ring-sky-500/50"
+              />
+              {query && (
+                <button 
+                  onClick={() => setQuery('')}
+                  className="absolute right-3 top-3.5 text-slate-500 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center space-x-2 pl-1">
+              <label className="flex items-center space-x-2 text-xs text-amber-400 font-semibold cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={exactSearch}
+                  onChange={(e) => setExactSearch(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-700 text-amber-500 focus:ring-amber-500 bg-slate-900 cursor-pointer"
+                />
+                <span>Recherche exacte (ex: restreindre strictement à JF1119)</span>
+              </label>
+            </div>
           </div>
 
           {/* Anti-Duplicate Status Selector */}

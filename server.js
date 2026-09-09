@@ -100,11 +100,11 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// Voter Search with Status Filter (anti-duplicate)
+// Voter Search with Status Filter (anti-duplicate) & Exact Search option
 app.get('/api/voters', async (req, res) => {
   try {
-    const { q, commune, status, limit, offset } = req.query;
-    const result = await searchVoters({ q, commune, status, limit, offset });
+    const { q, commune, status, exact, limit, offset } = req.query;
+    const result = await searchVoters({ q, commune, status, exact: exact === 'true', limit, offset });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
