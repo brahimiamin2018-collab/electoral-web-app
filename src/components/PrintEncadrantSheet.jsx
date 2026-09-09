@@ -108,26 +108,28 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
             ) : voters.length === 0 ? (
               <div className="py-8 text-center text-slate-500 text-sm">Aucun électeur affecté à cet encadrant.</div>
             ) : (
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="w-full text-left border-collapse text-xs border border-black">
                 <thead>
-                  <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider border border-slate-900">
-                    <th className="p-2 text-center w-8">N°</th>
-                    <th className="p-2">CIN</th>
-                    <th className="p-2">Nom & Prénom</th>
-                    <th className="p-2">Commune</th>
-                    <th className="p-2">Bureau / Lieu de Vote</th>
-                    <th className="p-2 text-center w-28 border-l border-slate-700">Émargement</th>
+                  <tr className="bg-white text-black font-bold uppercase text-[10px] tracking-wider border-b-2 border-black">
+                    <th className="p-2 text-center w-8 border border-black">N°</th>
+                    <th className="p-2 border border-black">CIN</th>
+                    <th className="p-2 border border-black">Nom & Prénom</th>
+                    <th className="p-2 border border-black">Commune</th>
+                    <th className="p-2 border border-black">NBV</th>
+                    <th className="p-2 text-center w-24 border border-black">REÇU</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-300 border border-slate-300">
+                <tbody className="divide-y divide-black border border-black">
                   {voters.map((item, idx) => (
-                    <tr key={item.CIN || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                      <td className="p-2 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
-                      <td className="p-2 font-mono font-bold text-slate-900">{item.CIN}</td>
-                      <td className="p-2 font-bold text-slate-900">{item.PRENOM} {item.NOM}</td>
-                      <td className="p-2 text-slate-700">{item.COMMUNE || 'N/C'}</td>
-                      <td className="p-2 text-slate-700">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
-                      <td className="p-2 border-l border-slate-300 text-center"></td>
+                    <tr key={item.CIN || idx} className="bg-white border-b border-black">
+                      <td className="p-2 text-center font-mono font-bold text-black border border-black">{idx + 1}</td>
+                      <td className="p-2 font-mono font-bold text-black border border-black">{item.CIN}</td>
+                      <td className="p-2 font-bold text-black border border-black">{item.PRENOM} {item.NOM}</td>
+                      <td className="p-2 text-black border border-black">{item.COMMUNE || 'N/C'}</td>
+                      <td className="p-2 text-black border border-black">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
+                      <td className="p-2 text-center font-extrabold text-black border border-black">
+                        {item.has_voted ? 'OK' : ''}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -156,26 +158,28 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
         </div>
 
         {voters.length > 0 && (
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-collapse text-xs border border-black">
             <thead>
-              <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider border border-slate-900">
-                <th className="p-2 text-center w-8">N°</th>
-                <th className="p-2">CIN</th>
-                <th className="p-2">Nom & Prénom</th>
-                <th className="p-2">Commune</th>
-                <th className="p-2">Bureau / Lieu de Vote</th>
-                <th className="p-2 text-center w-28 border-l border-slate-700">Émargement</th>
+              <tr className="bg-white text-black font-bold uppercase text-[10px] tracking-wider border-b-2 border-black">
+                <th className="p-2 text-center w-8 border border-black">N°</th>
+                <th className="p-2 border border-black">CIN</th>
+                <th className="p-2 border border-black">Nom & Prénom</th>
+                <th className="p-2 border border-black">Commune</th>
+                <th className="p-2 border border-black">NBV</th>
+                <th className="p-2 text-center w-24 border border-black">REÇU</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-300 border border-slate-300">
+            <tbody className="divide-y divide-black border border-black">
               {voters.map((item, idx) => (
-                <tr key={item.CIN || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  <td className="p-2 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
-                  <td className="p-2 font-mono font-bold text-slate-900">{item.CIN}</td>
-                  <td className="p-2 font-bold text-slate-900">{item.PRENOM} {item.NOM}</td>
-                  <td className="p-2 text-slate-700">{item.COMMUNE || 'N/C'}</td>
-                  <td className="p-2 text-slate-700">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
-                  <td className="p-2 border-l border-slate-300 text-center"></td>
+                <tr key={item.CIN || idx} className="bg-white border-b border-black">
+                  <td className="p-2 text-center font-mono font-bold text-black border border-black">{idx + 1}</td>
+                  <td className="p-2 font-mono font-bold text-black border border-black">{item.CIN}</td>
+                  <td className="p-2 font-bold text-black border border-black">{item.PRENOM} {item.NOM}</td>
+                  <td className="p-2 text-black border border-black">{item.COMMUNE || 'N/C'}</td>
+                  <td className="p-2 text-black border border-black">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
+                  <td className="p-2 text-center font-extrabold text-black border border-black">
+                    {item.has_voted ? 'OK' : ''}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -106,18 +106,22 @@
     width: 100% !important;
     border-collapse: collapse !important;
     margin-top: 6px !important;
+    border: 1px solid #000000 !important;
   }
 
   #printable-encadrant-sheet th,
   #printable-encadrant-sheet td {
     padding: 4px 6px !important;
     font-size: 11px !important;
-    border: 1px solid #cbd5e1 !important;
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
   }
 
   #printable-encadrant-sheet th {
-    background-color: #0f172a !important;
-    color: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-weight: bold !important;
+    border: 1px solid #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
