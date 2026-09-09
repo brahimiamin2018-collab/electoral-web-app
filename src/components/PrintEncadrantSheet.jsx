@@ -114,7 +114,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                     <th className="p-2 text-center w-8 border border-black">N°</th>
                     <th className="p-2 border border-black">CIN</th>
                     <th className="p-2 border border-black">Nom & Prénom</th>
-                    <th className="p-2 border border-black">Commune</th>
                     <th className="p-2 border border-black">NBV</th>
                     <th className="p-2 text-center w-24 border border-black">REÇU</th>
                   </tr>
@@ -125,7 +124,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                       <td className="p-2 text-center font-mono font-bold text-black border border-black">{idx + 1}</td>
                       <td className="p-2 font-mono font-bold text-black border border-black">{item.CIN}</td>
                       <td className="p-2 font-bold text-black border border-black">{item.PRENOM} {item.NOM}</td>
-                      <td className="p-2 text-black border border-black">{item.COMMUNE || 'N/C'}</td>
                       <td className="p-2 text-black border border-black">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
                       <td className="p-2 text-center font-extrabold text-black border border-black">
                         {item.has_voted ? 'OK' : ''}
@@ -164,7 +162,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                 <th className="p-2 text-center w-8 border border-black">N°</th>
                 <th className="p-2 border border-black">CIN</th>
                 <th className="p-2 border border-black">Nom & Prénom</th>
-                <th className="p-2 border border-black">Commune</th>
                 <th className="p-2 border border-black">NBV</th>
                 <th className="p-2 text-center w-24 border border-black">REÇU</th>
               </tr>
@@ -175,7 +172,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
                   <td className="p-2 text-center font-mono font-bold text-black border border-black">{idx + 1}</td>
                   <td className="p-2 font-mono font-bold text-black border border-black">{item.CIN}</td>
                   <td className="p-2 font-bold text-black border border-black">{item.PRENOM} {item.NOM}</td>
-                  <td className="p-2 text-black border border-black">{item.COMMUNE || 'N/C'}</td>
                   <td className="p-2 text-black border border-black">{item.LIEU_BUREAU_VOTE || 'N/C'}</td>
                   <td className="p-2 text-center font-extrabold text-black border border-black">
                     {item.has_voted ? 'OK' : ''}
