@@ -886,18 +886,39 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
                   <label className="text-xs font-semibold text-slate-300">
                     Commune <span className="text-rose-400">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    list="communes-list"
                     value={newCommune}
                     onChange={(e) => setNewCommune(e.target.value)}
-                    placeholder="ex: TAN TAN"
-                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm uppercase"
-                  />
-                  <datalist id="communes-list">
-                    {communes && communes.map((c, i) => <option key={i} value={c} />)}
-                  </datalist>
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm bg-slate-900 text-white font-semibold cursor-pointer border border-slate-700 focus:ring-2 focus:ring-emerald-500/50"
+                  >
+                    <option value="">-- Choisir une Commune / اختر الجماعة --</option>
+                    <optgroup label="Français">
+                      <option value="TANTAN">TANTAN (طانطان)</option>
+                      <option value="ELOUATIA">ELOUATIA (الوطية)</option>
+                      <option value="ABTEH">ABTEH (أبطيح)</option>
+                      <option value="BENKHLIL">BENKHLIL (ابن خليل)</option>
+                      <option value="CHBIKA">CHBIKA (الشبيكة)</option>
+                      <option value="MSIED">MSIED (المسيد)</option>
+                      <option value="TILEMZOUNE">TILEMZOUNE (تيلمزون)</option>
+                    </optgroup>
+                    <optgroup label="العربية">
+                      <option value="طانطان">طانطان</option>
+                      <option value="الوطية">الوطية</option>
+                      <option value="أبطيح">أبطيح</option>
+                      <option value="ابن خليل">ابن خليل</option>
+                      <option value="الشبيكة">الشبيكة</option>
+                      <option value="المسيد">المسيد</option>
+                      <option value="تيلمزون">تيلمزون</option>
+                    </optgroup>
+                    {communes && communes.map((c, i) => {
+                      const upper = (c || '').toUpperCase();
+                      if (["TANTAN", "ELOUATIA", "ABTEH", "BENKHLIL", "CHBIKA", "MSIED", "TILEMZOUNE", "طانطان", "أبطيح", "ابن خليل", "الشبيكة", "المسيد", "الوطية", "تيلمزون"].includes(upper)) {
+                        return null;
+                      }
+                      return <option key={`extra-${i}`} value={c}>{c}</option>;
+                    })}
+                  </select>
                 </div>
               </div>
 

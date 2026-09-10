@@ -917,7 +917,22 @@ export async function deleteAssignmentsByEncadrant(encadrant) {
   return { success: true };
 }
 
-export const OFFICIAL_COMMUNES = ["ABTEH", "BENKHLIL", "CHBIKA", "ELOUATIA", "MSIED", "TANTAN", "TILEMZOUNE"];
+export const OFFICIAL_COMMUNES = [
+  "TANTAN",
+  "ELOUATIA",
+  "ABTEH",
+  "BENKHLIL",
+  "CHBIKA",
+  "MSIED",
+  "TILEMZOUNE",
+  "طانطان",
+  "أبطيح",
+  "ابن خليل",
+  "الشبيكة",
+  "المسيد",
+  "الوطية",
+  "تيلمزون"
+];
 
 export async function getCommunes() {
   let fetched = [];
