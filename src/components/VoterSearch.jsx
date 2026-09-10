@@ -445,7 +445,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
               >
                 <div className="space-y-3">
                   
-                  {/* Checkbox & Status */}
+                  {/* Checkbox & Status Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <button
@@ -466,6 +466,13 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
                         CIN: {voter.CIN}
                       </span>
                     </div>
+
+                    {isAssigned && (
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center space-x-1" title={`Affecté à ${voter.affecte_encadrant}`}>
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span className="truncate max-w-[120px]">{voter.affecte_encadrant}</span>
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -493,22 +500,14 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-800 mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  {isVisiteur ? (
-                    <div className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-slate-800/60 border border-slate-700/60 text-slate-400 flex items-center justify-center space-x-1.5 cursor-not-allowed">
-                      <UserCheck className="w-4 h-4 text-slate-500" />
-                      <span>Consultation Seule</span>
+                {isAssigned && (
+                  <div className="pt-3 border-t border-slate-800/80 mt-3 flex items-center justify-between text-xs text-emerald-400 font-semibold bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-500/20">
+                    <div className="flex items-center space-x-1.5">
+                      <UserCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <span>Affecté à: <strong>{voter.affecte_encadrant}</strong></span>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => handleOpenAssignModal(voter)}
-                      className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-md shadow-sky-500/20 flex items-center justify-center space-x-1.5 transition transform hover:scale-[1.02]"
-                    >
-                      <UserCheck className="w-4 h-4" />
-                      <span>Affecter</span>
-                    </button>
-                  )}
-                </div>
+                  </div>
+                )}
 
               </div>
             );
