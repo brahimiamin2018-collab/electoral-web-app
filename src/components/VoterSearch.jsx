@@ -42,6 +42,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
   const [newBirth, setNewBirth] = useState('');
   const [newOrdre, setNewOrdre] = useState('');
   const [addingVoter, setAddingVoter] = useState(false);
+  const [addVoterError, setAddVoterError] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
@@ -76,8 +77,12 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
 
   const handleAddVoterSubmit = async (e) => {
     e.preventDefault();
+    setAddVoterError(null);
+
     if (!newCin.trim() || !newNom.trim() || !newPrenom.trim() || !newCommune.trim()) {
-      setFeedbackMsg({ type: 'error', text: 'Veuillez remplir le CIN, Nom, Prénom et la Commune.' });
+      const errMsg = 'Veuillez remplir le CIN, Nom, Prénom et la Commune.';
+      setAddVoterError(errMsg);
+      setFeedbackMsg({ type: 'error', text: errMsg });
       return;
     }
 
@@ -102,6 +107,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
 
       setFeedbackMsg({ type: 'success', text: `Électeur ${newCin.toUpperCase()} ajouté avec succès dans la base mère !` });
       setShowAddVoterModal(false);
+      setAddVoterError(null);
       setNewCin('');
       setNewNom('');
       setNewPrenom('');
@@ -112,6 +118,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
       fetchVoters();
       if (onAssignmentChange) onAssignmentChange();
     } catch (err) {
+      setAddVoterError(err.message);
       setFeedbackMsg({ type: 'error', text: err.message });
     } finally {
       setAddingVoter(false);
@@ -346,7 +353,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
           <div className="flex flex-wrap items-center gap-3">
             {!isVisiteur && (
               <button
-                onClick={() => setShowAddVoterModal(true)}
+                onClick={() => { setAddVoterError(null); setShowAddVoterModal(true); }}
                 className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20"
               >
                 <UserPlus className="w-4 h-4" />
@@ -867,6 +874,12 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
             </div>
 
             <form onSubmit={handleAddVoterSubmit} className="space-y-4">
+              {addVoterError && (
+                <div className="p-3.5 bg-rose-950/90 border border-rose-500 rounded-xl text-rose-300 text-xs flex items-center space-x-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                  <span className="font-semibold">{addVoterError}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">

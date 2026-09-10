@@ -327,6 +327,7 @@ export async function addVoter({ cin, nom, prenom, commune, lieu_bureau_vote, da
       num_ordre: cleanOrdre
     });
     if (error) throw new Error(error.message);
+    return { success: true, cin: cleanCin, nom: cleanNom, prenom: cleanPrenom, commune: cleanCommune, lieu_bureau_vote: cleanBureau };
   }
 
   const sql = `
