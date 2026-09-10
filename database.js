@@ -63,6 +63,60 @@ const runLocal = async (sql, params = []) => {
   });
 };
 
+export const OFFICIAL_COMMUNES_AR = [
+  "طانطان",
+  "الوطية",
+  "أبطيح",
+  "ابن خليل",
+  "الشبيكة",
+  "المسيد",
+  "تيلمزون"
+];
+
+export function toArabicCommune(name) {
+  if (!name) return '';
+  const clean = name.toString().trim().toUpperCase();
+  
+  if (clean.includes('TANTAN') || clean.includes('TAN TAN') || clean.includes('TAN-TAN') || clean.includes('طانطان')) {
+    return 'طانطان';
+  }
+  if (clean.includes('ELOUATIA') || clean.includes('EL OUATIA') || clean.includes('OUATIA') || clean.includes('الوطية')) {
+    return 'الوطية';
+  }
+  if (clean.includes('ABTEH') || clean.includes('AL ABTEH') || clean.includes('أبطيح')) {
+    return 'أبطيح';
+  }
+  if (clean.includes('BENKHLIL') || clean.includes('BEN KHLIL') || clean.includes('BEN-KHLIL') || clean.includes('ابن خليل')) {
+    return 'ابن خليل';
+  }
+  if (clean.includes('CHBIKA') || clean.includes('CHEBEIKA') || clean.includes('الشبيكة')) {
+    return 'الشبيكة';
+  }
+  if (clean.includes('MSIED') || clean.includes('المسيد')) {
+    return 'المسيد';
+  }
+  if (clean.includes('TILEMZOUNE') || clean.includes('TILMZOUNE') || clean.includes('تيلمزون')) {
+    return 'تيلمزون';
+  }
+
+  return name.trim();
+}
+
+export function getCommuneVariants(commune) {
+  if (!commune) return [];
+  const ar = toArabicCommune(commune);
+  const map = {
+    'طانطان': ['طانطان', 'TANTAN', 'TAN TAN', 'TAN-TAN'],
+    'الوطية': ['الوطية', 'ELOUATIA', 'EL OUATIA', 'OUATIA', 'EL-OUATIA'],
+    'أبطيح': ['أبطيح', 'ABTEH', 'AL ABTEH'],
+    'ابن خليل': ['ابن خليل', 'BENKHLIL', 'BEN KHLIL', 'BEN-KHLIL'],
+    'الشبيكة': ['الشبيكة', 'CHBIKA', 'CHEBEIKA', 'EL CHBIKA'],
+    'المسيد': ['المسيد', 'MSIED', 'EL MSIED'],
+    'تيلمزون': ['تيلمزون', 'TILEMZOUNE', 'TILMZOUNE']
+  };
+  return map[ar] || [commune];
+}
+
 export async function initDb() {
   if (isCloudMode) return;
 
@@ -159,19 +213,19 @@ export async function getStats() {
     const { data: affCommunes } = await supabase.from('affectations_encadrants').select('commune');
 
     const communeTotals = {};
-    OFFICIAL_COMMUNES.forEach(c => { communeTotals[c] = 0; });
+    OFFICIAL_COMMUNES_AR.forEach(c => { communeTotals[c] = 0; });
     (bddCommunes || []).forEach(r => {
       if (r.commune) {
-        const c = r.commune.trim().toUpperCase();
-        communeTotals[c] = (communeTotals[c] || 0) + 1;
+        const ar = toArabicCommune(r.commune);
+        communeTotals[ar] = (communeTotals[ar] || 0) + 1;
       }
     });
     const communeAffs = {};
-    OFFICIAL_COMMUNES.forEach(c => { communeAffs[c] = 0; });
+    OFFICIAL_COMMUNES_AR.forEach(c => { communeAffs[c] = 0; });
     (affCommunes || []).forEach(r => {
       if (r.commune) {
-        const c = r.commune.trim().toUpperCase();
-        communeAffs[c] = (communeAffs[c] || 0) + 1;
+        const ar = toArabicCommune(r.commune);
+        communeAffs[ar] = (communeAffs[ar] || 0) + 1;
       }
     });
 
@@ -211,19 +265,19 @@ export async function getStats() {
   const affCommuneRows = await queryLocal(`SELECT COMMUNE as commune, COUNT(*) as affectes FROM AFFECTATIONS_ENCADRANTS WHERE COMMUNE IS NOT NULL AND COMMUNE != '' GROUP BY COMMUNE`);
 
   const communeTotals = {};
-  OFFICIAL_COMMUNES.forEach(c => { communeTotals[c] = 0; });
+  OFFICIAL_COMMUNES_AR.forEach(c => { communeTotals[c] = 0; });
   (bddCommuneRows || []).forEach(r => {
     if (r.commune) {
-      const c = r.commune.trim().toUpperCase();
-      communeTotals[c] = (communeTotals[c] || 0) + r.total;
+      const ar = toArabicCommune(r.commune);
+      communeTotals[ar] = (communeTotals[ar] || 0) + r.total;
     }
   });
   const communeAffs = {};
-  OFFICIAL_COMMUNES.forEach(c => { communeAffs[c] = 0; });
+  OFFICIAL_COMMUNES_AR.forEach(c => { communeAffs[c] = 0; });
   (affCommuneRows || []).forEach(r => {
     if (r.commune) {
-      const c = r.commune.trim().toUpperCase();
-      communeAffs[c] = (communeAffs[c] || 0) + r.affectes;
+      const ar = toArabicCommune(r.commune);
+      communeAffs[ar] = (communeAffs[ar] || 0) + r.affectes;
     }
   });
 
@@ -252,7 +306,7 @@ export async function addVoter({ cin, nom, prenom, commune, lieu_bureau_vote, da
   const cleanCin = (cin || '').trim().toUpperCase();
   const cleanNom = (nom || '').trim();
   const cleanPrenom = (prenom || '').trim();
-  const cleanCommune = (commune || '').trim();
+  const cleanCommune = toArabicCommune(commune);
   const cleanBureau = (lieu_bureau_vote || '').trim();
   const cleanBirth = (date_naissance || '').trim();
   const cleanOrdre = (num_ordre || '').trim();
@@ -301,7 +355,9 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
     }
 
     if (commune && commune.trim()) {
-      queryBuilder = queryBuilder.ilike('commune', commune.trim());
+      const variants = getCommuneVariants(commune);
+      const filterStr = variants.map(v => `commune.ilike.${v}`).join(',');
+      queryBuilder = queryBuilder.or(filterStr);
     }
 
     queryBuilder = queryBuilder.range(Number(offset), Number(offset) + Number(limit) - 1);
@@ -334,7 +390,7 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
         NOM: v.nom,
         SEXE: v.sexe,
         CIRCONSCRIPTION_ELECTORALE: v.circonscription_electorale,
-        COMMUNE: v.commune,
+        COMMUNE: toArabicCommune(v.commune),
         NOM_BUREAU_VOTE: v.nom_bureau_vote,
         ADRESSE_BUREAU_VOTE: v.adresse_bureau_vote,
         LIEU_BUREAU_VOTE: v.lieu_bureau_vote,
@@ -383,8 +439,10 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
   }
 
   if (commune && commune.trim()) {
-    whereClauses.push(`b.COMMUNE = ?`);
-    params.push(commune.trim());
+    const variants = getCommuneVariants(commune);
+    const placeholders = variants.map(() => '?').join(',');
+    whereClauses.push(`b.COMMUNE IN (${placeholders})`);
+    params.push(...variants);
   }
 
   if (status === 'unassigned') {
@@ -423,7 +481,11 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
   `;
 
   const finalParams = [...params, ...orderParams, Number(limit), Number(offset)];
-  const voters = await queryLocal(sql, finalParams);
+  const rawVoters = await queryLocal(sql, finalParams);
+  const voters = (rawVoters || []).map(v => ({
+    ...v,
+    COMMUNE: toArabicCommune(v.COMMUNE)
+  }));
 
   const countSql = `
     SELECT COUNT(*) as total 
@@ -453,7 +515,7 @@ export async function getVoterByCin(cin) {
       NOM: v.nom,
       SEXE: v.sexe,
       CIRCONSCRIPTION_ELECTORALE: v.circonscription_electorale,
-      COMMUNE: v.commune,
+      COMMUNE: toArabicCommune(v.commune),
       NOM_BUREAU_VOTE: v.nom_bureau_vote,
       ADRESSE_BUREAU_VOTE: v.adresse_bureau_vote,
       LIEU_BUREAU_VOTE: v.lieu_bureau_vote,
@@ -474,7 +536,11 @@ export async function getVoterByCin(cin) {
     LEFT JOIN AFFECTATIONS_ENCADRANTS a ON b.CIN = a.CIN
     WHERE b.CIN = ?
   `;
-  return await getLocal(sql, [cin]);
+  const voter = await getLocal(sql, [cin]);
+  if (voter) {
+    voter.COMMUNE = toArabicCommune(voter.COMMUNE);
+  }
+  return voter;
 }
 
 export async function getEncadrants() {
@@ -547,7 +613,11 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', vot
     let queryBuilder = supabase.from('affectations_encadrants').select('*', { count: 'exact' });
 
     if (encadrant) queryBuilder = queryBuilder.eq('encadrant', encadrant);
-    if (commune) queryBuilder = queryBuilder.eq('commune', commune);
+    if (commune) {
+      const variants = getCommuneVariants(commune);
+      const filterStr = variants.map(v => `commune.ilike.${v}`).join(',');
+      queryBuilder = queryBuilder.or(filterStr);
+    }
     if (q && q.trim()) {
       const term = `%${q.trim()}%`;
       queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term},encadrant.ilike.${term}`);
@@ -565,7 +635,7 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', vot
         NUM_ORDRE: a.num_ordre,
         PRENOM: a.prenom,
         NOM: a.nom,
-        COMMUNE: a.commune,
+        COMMUNE: toArabicCommune(a.commune),
         LIEU_BUREAU_VOTE: a.lieu_bureau_vote,
         ENCADRANT: a.encadrant,
         TEL: a.tel,
@@ -594,8 +664,10 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', vot
   }
 
   if (commune) {
-    whereClauses.push(`a.COMMUNE = ?`);
-    params.push(commune);
+    const variants = getCommuneVariants(commune);
+    const placeholders = variants.map(() => '?').join(',');
+    whereClauses.push(`a.COMMUNE IN (${placeholders})`);
+    params.push(...variants);
   }
 
   if (q && q.trim()) {
@@ -624,6 +696,7 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', vot
   const rawRows = await queryLocal(sql, params);
   const items = (rawRows || []).map(a => ({
     ...a,
+    COMMUNE: toArabicCommune(a.COMMUNE),
     has_voted: !!a.HAS_VOTED || (a.TEL_ELECTEUR || '').includes('VOTED'),
     TEL_ELECTEUR: (a.TEL_ELECTEUR || '').replace(/VOTED\|?/g, '')
   }));
@@ -935,34 +1008,7 @@ export const OFFICIAL_COMMUNES = [
 ];
 
 export async function getCommunes() {
-  let fetched = [];
-  if (isCloudMode) {
-    try {
-      const set = new Set();
-      let currentCommune = '';
-      while (true) {
-        let q = supabase.from('bdd_mere').select('commune').order('commune', { ascending: true }).limit(1);
-        if (currentCommune) {
-          q = q.gt('commune', currentCommune);
-        }
-        const { data, error } = await q;
-        if (error || !data || data.length === 0) break;
-        const val = data[0].commune ? data[0].commune.trim().toUpperCase() : '';
-        if (val) set.add(val);
-        currentCommune = data[0].commune;
-      }
-      fetched = Array.from(set);
-    } catch (e) {
-      console.error('Erreur chargement communes Supabase:', e);
-    }
-  } else {
-    const sql = `SELECT DISTINCT COMMUNE FROM BDD_MERE WHERE COMMUNE IS NOT NULL AND COMMUNE != '' ORDER BY COMMUNE ASC`;
-    const rows = await queryLocal(sql);
-    fetched = rows.map(r => r.COMMUNE ? r.COMMUNE.trim().toUpperCase() : '').filter(Boolean);
-  }
-
-  const combinedSet = new Set([...OFFICIAL_COMMUNES, ...fetched]);
-  return Array.from(combinedSet).sort();
+  return [...OFFICIAL_COMMUNES_AR];
 }
 
 // ----------------------------------------------------
