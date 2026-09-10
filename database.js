@@ -209,31 +209,21 @@ export async function getStats() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    const { data: bddCommunes } = await supabase.from('bdd_mere').select('commune');
-    const { data: affCommunes } = await supabase.from('affectations_encadrants').select('commune');
+    const statsByCommune = await Promise.all(OFFICIAL_COMMUNES_AR.map(async (c) => {
+      const variants = getCommuneVariants(c);
+      const filterStr = variants.map(v => `commune.ilike.${v}`).join(',');
+      const [{ count: cTotal }, { count: cAff }] = await Promise.all([
+        supabase.from('bdd_mere').select('*', { count: 'exact', head: true }).or(filterStr),
+        supabase.from('affectations_encadrants').select('*', { count: 'exact', head: true }).or(filterStr)
+      ]);
 
-    const communeTotals = {};
-    OFFICIAL_COMMUNES_AR.forEach(c => { communeTotals[c] = 0; });
-    (bddCommunes || []).forEach(r => {
-      if (r.commune) {
-        const ar = toArabicCommune(r.commune);
-        communeTotals[ar] = (communeTotals[ar] || 0) + 1;
-      }
-    });
-    const communeAffs = {};
-    OFFICIAL_COMMUNES_AR.forEach(c => { communeAffs[c] = 0; });
-    (affCommunes || []).forEach(r => {
-      if (r.commune) {
-        const ar = toArabicCommune(r.commune);
-        communeAffs[ar] = (communeAffs[ar] || 0) + 1;
-      }
-    });
-
-    const statsByCommune = Object.keys(communeTotals).map(c => ({
-      commune: c,
-      total: communeTotals[c] || 0,
-      affectes: communeAffs[c] || 0
-    })).sort((a, b) => b.total - a.total);
+      return {
+        commune: c,
+        total: cTotal || 0,
+        affectes: cAff || 0
+      };
+    }));
+    statsByCommune.sort((a, b) => b.total - a.total);
 
     const assignmentRate = totalVoters > 0 ? ((totalAssignments / totalVoters) * 100).toFixed(2) : 0;
 
