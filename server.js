@@ -27,7 +27,8 @@ import {
   loginUser,
   getUsers,
   addUser,
-  deleteUser
+  deleteUser,
+  addVoter
 } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -108,6 +109,16 @@ app.get('/api/voters', async (req, res) => {
     const { q, commune, status, exact, limit, offset } = req.query;
     const result = await searchVoters({ q, commune, status, exact: exact === 'true', limit, offset });
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add New Voter to Mother DB
+app.post('/api/voters', async (req, res) => {
+  try {
+    const voter = await addVoter(req.body);
+    res.json({ success: true, voter });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

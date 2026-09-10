@@ -155,6 +155,24 @@ export async function getStats() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
+    const { data: bddCommunes } = await supabase.from('bdd_mere').select('commune');
+    const { data: affCommunes } = await supabase.from('affectations_encadrants').select('commune');
+
+    const communeTotals = {};
+    (bddCommunes || []).forEach(r => {
+      if (r.commune) communeTotals[r.commune] = (communeTotals[r.commune] || 0) + 1;
+    });
+    const communeAffs = {};
+    (affCommunes || []).forEach(r => {
+      if (r.commune) communeAffs[r.commune] = (communeAffs[r.commune] || 0) + 1;
+    });
+
+    const statsByCommune = Object.keys(communeTotals).map(c => ({
+      commune: c,
+      total: communeTotals[c],
+      affectes: communeAffs[c] || 0
+    })).sort((a, b) => b.total - a.total).slice(0, 10);
+
     const assignmentRate = totalVoters > 0 ? ((totalAssignments / totalVoters) * 100).toFixed(2) : 0;
 
     return {
@@ -163,7 +181,7 @@ export async function getStats() {
       totalEncadrants,
       assignmentRate,
       topEncadrants,
-      statsByCommune: []
+      statsByCommune
     };
   }
 
@@ -204,6 +222,42 @@ export async function getStats() {
     topEncadrants,
     statsByCommune
   };
+}
+
+export async function addVoter({ cin, nom, prenom, commune, lieu_bureau_vote, date_naissance = '', num_ordre = '' }) {
+  const cleanCin = (cin || '').trim().toUpperCase();
+  const cleanNom = (nom || '').trim();
+  const cleanPrenom = (prenom || '').trim();
+  const cleanCommune = (commune || '').trim();
+  const cleanBureau = (lieu_bureau_vote || '').trim();
+  const cleanBirth = (date_naissance || '').trim();
+  const cleanOrdre = (num_ordre || '').trim();
+
+  if (!cleanCin || !cleanNom || !cleanPrenom || !cleanCommune) {
+    throw new Error('Le CIN, Nom, Prénom et la Commune sont obligatoires.');
+  }
+
+  if (isCloudMode) {
+    const { error } = await supabase.from('bdd_mere').upsert({
+      cin: cleanCin,
+      nom: cleanNom,
+      prenom: cleanPrenom,
+      commune: cleanCommune,
+      lieu_bureau_vote: cleanBureau,
+      nom_bureau_vote: cleanBureau,
+      date_naissance: cleanBirth,
+      num_ordre: cleanOrdre
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  const sql = `
+    INSERT OR REPLACE INTO BDD_MERE 
+    (CIN, NOM, PRENOM, COMMUNE, LIEU_BUREAU_VOTE, NOM_BUREAU_VOTE, DATE_NAISSANCE, NUM_ORDRE)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  await runLocal(sql, [cleanCin, cleanNom, cleanPrenom, cleanCommune, cleanBureau, cleanBureau, cleanBirth, cleanOrdre]);
+  return { success: true, cin: cleanCin, nom: cleanNom, prenom: cleanPrenom, commune: cleanCommune, lieu_bureau_vote: cleanBureau };
 }
 
 export async function searchVoters({ q = '', commune = '', status = 'all', exact = false, limit = 60, offset = 0 }) {

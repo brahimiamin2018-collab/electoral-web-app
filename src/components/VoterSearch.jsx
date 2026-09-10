@@ -32,6 +32,17 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
   const [newEncadrantTel, setNewEncadrantTel] = useState('');
   const [addingEncadrant, setAddingEncadrant] = useState(false);
 
+  // New Voter Modal State
+  const [showAddVoterModal, setShowAddVoterModal] = useState(false);
+  const [newCin, setNewCin] = useState('');
+  const [newNom, setNewNom] = useState('');
+  const [newPrenom, setNewPrenom] = useState('');
+  const [newCommune, setNewCommune] = useState('');
+  const [newNbv, setNewNbv] = useState('');
+  const [newBirth, setNewBirth] = useState('');
+  const [newOrdre, setNewOrdre] = useState('');
+  const [addingVoter, setAddingVoter] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
 
@@ -60,6 +71,50 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
       console.error('Erreur recherche électeurs:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddVoterSubmit = async (e) => {
+    e.preventDefault();
+    if (!newCin.trim() || !newNom.trim() || !newPrenom.trim() || !newCommune.trim()) {
+      setFeedbackMsg({ type: 'error', text: 'Veuillez remplir le CIN, Nom, Prénom et la Commune.' });
+      return;
+    }
+
+    setAddingVoter(true);
+    try {
+      const res = await fetch('/api/voters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cin: newCin,
+          nom: newNom,
+          prenom: newPrenom,
+          commune: newCommune,
+          lieu_bureau_vote: newNbv,
+          date_naissance: newBirth,
+          num_ordre: newOrdre
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de l\'ajout de l\'électeur');
+
+      setFeedbackMsg({ type: 'success', text: `Électeur ${newCin.toUpperCase()} ajouté avec succès dans la base mère !` });
+      setShowAddVoterModal(false);
+      setNewCin('');
+      setNewNom('');
+      setNewPrenom('');
+      setNewCommune('');
+      setNewNbv('');
+      setNewBirth('');
+      setNewOrdre('');
+      fetchVoters();
+      if (onAssignmentChange) onAssignmentChange();
+    } catch (err) {
+      setFeedbackMsg({ type: 'error', text: err.message });
+    } finally {
+      setAddingVoter(false);
     }
   };
 
@@ -289,6 +344,16 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {!isVisiteur && (
+              <button
+                onClick={() => setShowAddVoterModal(true)}
+                className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Nouveau Électeur</span>
+              </button>
+            )}
+
             {voters.length > 0 && (
               <button
                 onClick={toggleSelectAllVisible}
@@ -780,6 +845,150 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
 
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Add New Voter Modal */}
+      {showAddVoterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="glass-card w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-emerald-400" />
+                <span>Ajouter un Nouvel Électeur</span>
+              </h3>
+              <button 
+                onClick={() => setShowAddVoterModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddVoterSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    CIN <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newCin}
+                    onChange={(e) => setNewCin(e.target.value)}
+                    placeholder="ex: JF12345"
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm font-mono uppercase"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Commune <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    list="communes-list"
+                    value={newCommune}
+                    onChange={(e) => setNewCommune(e.target.value)}
+                    placeholder="ex: TAN TAN"
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm uppercase"
+                  />
+                  <datalist id="communes-list">
+                    {communes && communes.map((c, i) => <option key={i} value={c} />)}
+                  </datalist>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Nom <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newNom}
+                    onChange={(e) => setNewNom(e.target.value)}
+                    placeholder="Nom de famille"
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Prénom <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newPrenom}
+                    onChange={(e) => setNewPrenom(e.target.value)}
+                    placeholder="Prénom"
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    N° Bureau (NBV)
+                  </label>
+                  <input
+                    type="text"
+                    value={newNbv}
+                    onChange={(e) => setNewNbv(e.target.value)}
+                    placeholder="ex: 12"
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Date Naissance
+                  </label>
+                  <input
+                    type="text"
+                    value={newBirth}
+                    onChange={(e) => setNewBirth(e.target.value)}
+                    placeholder="ex: 1985"
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    N° Ordre
+                  </label>
+                  <input
+                    type="text"
+                    value={newOrdre}
+                    onChange={(e) => setNewOrdre(e.target.value)}
+                    placeholder="ex: 450"
+                    className="w-full px-3 py-2.5 glass-input rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowAddVoterModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingVoter}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-semibold shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {addingVoter ? 'Enregistrement...' : 'Ajouter à la Base Mère'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
