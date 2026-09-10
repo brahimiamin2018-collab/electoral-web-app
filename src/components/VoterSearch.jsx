@@ -79,8 +79,8 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
     e.preventDefault();
     setAddVoterError(null);
 
-    if (!newCin.trim() || !newNom.trim() || !newPrenom.trim() || !newCommune.trim()) {
-      const errMsg = 'Veuillez remplir le CIN, Nom, Prénom et la Commune.';
+    if (!newCin.trim() || !newNom.trim() || !newPrenom.trim() || !newCommune.trim() || !newNbv.trim() || !newOrdre.trim()) {
+      const errMsg = 'Toutes les informations (CIN, Nom, Prénom, Commune, N° Bureau et N° Ordre) sont obligatoires, sauf la date de naissance.';
       setAddVoterError(errMsg);
       setFeedbackMsg({ type: 'error', text: errMsg });
       return;
@@ -950,10 +950,11 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">
-                    N° Bureau (NBV)
+                    N° Bureau (NBV) <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
+                    required
                     value={newNbv}
                     onChange={(e) => setNewNbv(e.target.value)}
                     placeholder="ex: 12"
@@ -963,7 +964,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">
-                    Date Naissance
+                    Date Naissance <span className="text-slate-500 font-normal">(Optionnel)</span>
                   </label>
                   <input
                     type="text"
@@ -976,10 +977,11 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">
-                    N° Ordre
+                    N° Ordre <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
+                    required
                     value={newOrdre}
                     onChange={(e) => setNewOrdre(e.target.value)}
                     placeholder="ex: 450"

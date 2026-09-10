@@ -311,8 +311,8 @@ export async function addVoter({ cin, nom, prenom, commune, lieu_bureau_vote, da
   const cleanBirth = (date_naissance || '').trim();
   const cleanOrdre = (num_ordre || '').trim();
 
-  if (!cleanCin || !cleanNom || !cleanPrenom || !cleanCommune) {
-    throw new Error('Le CIN, Nom, Prénom et la Commune sont obligatoires.');
+  if (!cleanCin || !cleanNom || !cleanPrenom || !cleanCommune || !cleanBureau || !cleanOrdre) {
+    throw new Error('Toutes les informations (CIN, Nom, Prénom, Commune, N° Bureau et N° Ordre) sont obligatoires, sauf la date de naissance.');
   }
 
   if (isCloudMode) {
