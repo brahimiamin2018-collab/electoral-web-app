@@ -159,19 +159,27 @@ export async function getStats() {
     const { data: affCommunes } = await supabase.from('affectations_encadrants').select('commune');
 
     const communeTotals = {};
+    OFFICIAL_COMMUNES.forEach(c => { communeTotals[c] = 0; });
     (bddCommunes || []).forEach(r => {
-      if (r.commune) communeTotals[r.commune] = (communeTotals[r.commune] || 0) + 1;
+      if (r.commune) {
+        const c = r.commune.trim().toUpperCase();
+        communeTotals[c] = (communeTotals[c] || 0) + 1;
+      }
     });
     const communeAffs = {};
+    OFFICIAL_COMMUNES.forEach(c => { communeAffs[c] = 0; });
     (affCommunes || []).forEach(r => {
-      if (r.commune) communeAffs[r.commune] = (communeAffs[r.commune] || 0) + 1;
+      if (r.commune) {
+        const c = r.commune.trim().toUpperCase();
+        communeAffs[c] = (communeAffs[c] || 0) + 1;
+      }
     });
 
     const statsByCommune = Object.keys(communeTotals).map(c => ({
       commune: c,
-      total: communeTotals[c],
+      total: communeTotals[c] || 0,
       affectes: communeAffs[c] || 0
-    })).sort((a, b) => b.total - a.total).slice(0, 10);
+    })).sort((a, b) => b.total - a.total);
 
     const assignmentRate = totalVoters > 0 ? ((totalAssignments / totalVoters) * 100).toFixed(2) : 0;
 
@@ -199,15 +207,31 @@ export async function getStats() {
     LIMIT 10
   `);
 
-  const statsByCommune = await queryLocal(`
-    SELECT COMMUNE as commune, COUNT(*) as total, 
-           (SELECT COUNT(*) FROM AFFECTATIONS_ENCADRANTS a WHERE a.COMMUNE = b.COMMUNE) as affectes
-    FROM BDD_MERE b
-    WHERE COMMUNE IS NOT NULL AND COMMUNE != ''
-    GROUP BY COMMUNE
-    ORDER BY total DESC
-    LIMIT 10
-  `);
+  const bddCommuneRows = await queryLocal(`SELECT COMMUNE as commune, COUNT(*) as total FROM BDD_MERE WHERE COMMUNE IS NOT NULL AND COMMUNE != '' GROUP BY COMMUNE`);
+  const affCommuneRows = await queryLocal(`SELECT COMMUNE as commune, COUNT(*) as affectes FROM AFFECTATIONS_ENCADRANTS WHERE COMMUNE IS NOT NULL AND COMMUNE != '' GROUP BY COMMUNE`);
+
+  const communeTotals = {};
+  OFFICIAL_COMMUNES.forEach(c => { communeTotals[c] = 0; });
+  (bddCommuneRows || []).forEach(r => {
+    if (r.commune) {
+      const c = r.commune.trim().toUpperCase();
+      communeTotals[c] = (communeTotals[c] || 0) + r.total;
+    }
+  });
+  const communeAffs = {};
+  OFFICIAL_COMMUNES.forEach(c => { communeAffs[c] = 0; });
+  (affCommuneRows || []).forEach(r => {
+    if (r.commune) {
+      const c = r.commune.trim().toUpperCase();
+      communeAffs[c] = (communeAffs[c] || 0) + r.affectes;
+    }
+  });
+
+  const statsByCommune = Object.keys(communeTotals).map(c => ({
+    commune: c,
+    total: communeTotals[c] || 0,
+    affectes: communeAffs[c] || 0
+  })).sort((a, b) => b.total - a.total);
 
   const totalVoters = totalVotersRow ? totalVotersRow.count : 0;
   const totalAssignments = totalAssignmentsRow ? totalAssignmentsRow.count : 0;
@@ -893,7 +917,10 @@ export async function deleteAssignmentsByEncadrant(encadrant) {
   return { success: true };
 }
 
+export const OFFICIAL_COMMUNES = ["ABTEH", "BENKHLIL", "CHBIKA", "ELOUATIA", "MSIED", "TANTAN", "TILEMZOUNE"];
+
 export async function getCommunes() {
+  let fetched = [];
   if (isCloudMode) {
     try {
       const set = new Set();
@@ -905,21 +932,22 @@ export async function getCommunes() {
         }
         const { data, error } = await q;
         if (error || !data || data.length === 0) break;
-        const val = data[0].commune ? data[0].commune.trim() : '';
+        const val = data[0].commune ? data[0].commune.trim().toUpperCase() : '';
         if (val) set.add(val);
         currentCommune = data[0].commune;
       }
-      if (set.size > 0) {
-        return Array.from(set).sort();
-      }
+      fetched = Array.from(set);
     } catch (e) {
       console.error('Erreur chargement communes Supabase:', e);
     }
+  } else {
+    const sql = `SELECT DISTINCT COMMUNE FROM BDD_MERE WHERE COMMUNE IS NOT NULL AND COMMUNE != '' ORDER BY COMMUNE ASC`;
+    const rows = await queryLocal(sql);
+    fetched = rows.map(r => r.COMMUNE ? r.COMMUNE.trim().toUpperCase() : '').filter(Boolean);
   }
 
-  const sql = `SELECT DISTINCT COMMUNE FROM BDD_MERE WHERE COMMUNE IS NOT NULL AND COMMUNE != '' ORDER BY COMMUNE ASC`;
-  const rows = await queryLocal(sql);
-  return rows.map(r => r.COMMUNE);
+  const combinedSet = new Set([...OFFICIAL_COMMUNES, ...fetched]);
+  return Array.from(combinedSet).sort();
 }
 
 // ----------------------------------------------------
