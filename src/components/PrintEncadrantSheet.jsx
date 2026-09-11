@@ -186,13 +186,12 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
           </table>
         )}
 
-        <div className="mt-4 pt-2 border-t border-slate-300 flex justify-between items-end text-[11px] text-slate-600">
+        <div className="mt-4 pt-2 border-t border-black flex justify-between items-end text-[11px] text-black">
           <div>
             Signature de l'Encadrant :
-            <div className="h-14 w-48 border border-dashed border-slate-400 rounded mt-1"></div>
+            <div className="h-12 w-48 border border-dashed border-black rounded mt-1"></div>
           </div>
-          <div className="text-right font-mono text-[10px]">
-            Page 1
+          <div className="text-right font-mono text-xs font-bold text-black print-page-number">
           </div>
         </div>
       </div>
