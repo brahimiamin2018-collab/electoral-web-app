@@ -573,20 +573,36 @@ export async function getVoterByCin(cin) {
 export async function getEncadrants() {
   if (isCloudMode) {
     const { data: encs } = await supabase.from('liste_encadrants').select('*').order('nomencadrant', { ascending: true });
-    const { data: affs } = await supabase.from('affectations_encadrants').select('encadrant');
+
+    let allAffs = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase.from('affectations_encadrants').select('encadrant').range(from, from + step - 1);
+      if (error || !data || data.length === 0) break;
+      allAffs.push(...data);
+      if (data.length < step) break;
+      from += step;
+    }
 
     const countMap = {};
-    (affs || []).forEach(a => {
-      if (a.encadrant) countMap[a.encadrant] = (countMap[a.encadrant] || 0) + 1;
+    allAffs.forEach(a => {
+      if (a.encadrant) {
+        const key = a.encadrant.trim().toLowerCase();
+        countMap[key] = (countMap[key] || 0) + 1;
+      }
     });
 
     return (encs || [])
       .filter(e => e.nomencadrant && !e.nomencadrant.startsWith('__USER__:'))
-      .map(e => ({
-        nom: e.nomencadrant,
-        tel: e.tel_encadrant,
-        count_affectations: countMap[e.nomencadrant] || 0
-      }));
+      .map(e => {
+        const nom = e.nomencadrant.trim();
+        return {
+          nom: nom,
+          tel: e.tel_encadrant,
+          count_affectations: countMap[nom.toLowerCase()] || 0
+        };
+      });
   }
 
   const sql = `
@@ -594,7 +610,7 @@ export async function getEncadrants() {
            e.TEL_ENCADRANT as tel,
            COUNT(a.CIN) as count_affectations
     FROM LISTE_ENCADRANTS e
-    LEFT JOIN AFFECTATIONS_ENCADRANTS a ON e.NomEncadrant = a.ENCADRANT
+    LEFT JOIN AFFECTATIONS_ENCADRANTS a ON LOWER(TRIM(e.NomEncadrant)) = LOWER(TRIM(a.ENCADRANT))
     WHERE e.NomEncadrant NOT LIKE '__USER__:%'
     GROUP BY e.NomEncadrant
     ORDER BY e.NomEncadrant ASC
