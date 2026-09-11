@@ -46,20 +46,6 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
       return;
     }
 
-    // Check User built-in credentials
-    if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
-      onLogin({ role: 'utilisateur', username: 'user', nom_complet: 'Opérateur de Saisie' });
-      if (onClose) onClose();
-      return;
-    }
-
-    // Check Visiteur built-in credentials
-    if ((cleanUser === 'visiteur' || cleanUser === 'guest') && (cleanPass === 'visiteur123' || cleanPass === 'visiteur')) {
-      onLogin({ role: 'visiteur', username: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)' });
-      if (onClose) onClose();
-      return;
-    }
-
     // Fallback check local hybrid storage
     try {
       const stored = localStorage.getItem('electoral_persistent_users');

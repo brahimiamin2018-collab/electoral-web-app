@@ -1009,9 +1009,7 @@ export async function getCommunes() {
 const usersFilePath = path.join(__dirname, 'users_db.json');
 
 const defaultUsersList = [
-  { username: 'salama', password: 'electorale@1475963', role: 'admin', nom_complet: 'Administrateur Principal (salama)', created_at: new Date().toISOString() },
-  { username: 'user', password: 'user123', role: 'utilisateur', nom_complet: 'Opérateur de Saisie', created_at: new Date().toISOString() },
-  { username: 'visiteur', password: 'visiteur123', role: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)', created_at: new Date().toISOString() }
+  { username: 'salama', password: 'electorale@1475963', role: 'admin', nom_complet: 'Administrateur Principal (salama)', created_at: new Date().toISOString() }
 ];
 
 function getPersistentUsersList() {
@@ -1023,7 +1021,12 @@ function getPersistentUsersList() {
       if (Array.isArray(parsed)) {
         const userMap = {};
         defaultUsersList.forEach(u => { userMap[u.username.toLowerCase()] = u; });
-        parsed.forEach(u => { userMap[u.username.toLowerCase()] = u; });
+        parsed.forEach(u => {
+          const name = (u.username || '').toLowerCase();
+          if (name !== 'user' && name !== 'visiteur') {
+            userMap[name] = u;
+          }
+        });
         list = Object.values(userMap);
       }
     }
@@ -1060,12 +1063,6 @@ export async function loginUser(username, password) {
   // Check default built-in accounts
   if ((cleanUser === 'salama' || cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'electorale@1475963' || cleanPass === 'admin123' || cleanPass === 'admin')) {
     return { username: 'salama', role: 'admin', nom_complet: 'Administrateur Principal (salama)' };
-  }
-  if ((cleanUser === 'user' || cleanUser === 'utilisateur') && (cleanPass === 'user123' || cleanPass === '123456')) {
-    return { username: 'user', role: 'utilisateur', nom_complet: 'Opérateur de Saisie' };
-  }
-  if ((cleanUser === 'visiteur' || cleanUser === 'guest') && (cleanPass === 'visiteur123' || cleanPass === 'visiteur')) {
-    return { username: 'visiteur', role: 'visiteur', nom_complet: 'Compte Visiteur (Lecture seule)' };
   }
 
   // Check in-memory persistent list
