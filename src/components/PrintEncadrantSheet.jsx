@@ -191,8 +191,6 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
             Signature de l'Encadrant :
             <div className="h-12 w-48 border border-dashed border-black rounded mt-1"></div>
           </div>
-          <div className="text-right font-mono text-xs font-bold text-black print-page-number">
-          </div>
         </div>
       </div>
     </>,

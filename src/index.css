@@ -69,15 +69,6 @@
     }
   }
 
-  body {
-    counter-reset: page;
-  }
-
-  .print-page-number::after {
-    counter-increment: page;
-    content: "Page " counter(page);
-  }
-
   /* 1. Completely collapse #root and all main UI components during print */
   #root,
   .print\:hidden {
