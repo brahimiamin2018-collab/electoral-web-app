@@ -653,25 +653,45 @@ export async function deleteEncadrant(nom) {
 
 export async function getAssignments({ encadrant = '', commune = '', q = '', vote = 'all', limit = 1000, offset = 0 }) {
   if (isCloudMode) {
-    let queryBuilder = supabase.from('affectations_encadrants').select('*', { count: 'exact' });
+    const targetLimit = Number(limit);
+    const startOffset = Number(offset);
+    let allRawAffs = [];
+    let currentOffset = startOffset;
+    let totalCount = 0;
 
-    if (encadrant) queryBuilder = queryBuilder.eq('encadrant', encadrant);
-    if (commune) {
-      const variants = getCommuneVariants(commune);
-      const filterStr = variants.map(v => `commune.ilike.${v}`).join(',');
-      queryBuilder = queryBuilder.or(filterStr);
+    while (allRawAffs.length < targetLimit) {
+      let queryBuilder = supabase.from('affectations_encadrants').select('*', { count: 'exact' });
+
+      if (encadrant) queryBuilder = queryBuilder.eq('encadrant', encadrant);
+      if (commune) {
+        const variants = getCommuneVariants(commune);
+        const filterStr = variants.map(v => `commune.ilike.${v}`).join(',');
+        queryBuilder = queryBuilder.or(filterStr);
+      }
+      if (q && q.trim()) {
+        const term = `%${q.trim()}%`;
+        queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term},encadrant.ilike.${term}`);
+      }
+
+      const chunkSize = Math.min(1000, targetLimit - allRawAffs.length);
+      queryBuilder = queryBuilder
+        .order('date_inscription', { ascending: false })
+        .range(currentOffset, currentOffset + chunkSize - 1);
+
+      const { data: rawAffs, count, error } = await queryBuilder;
+      if (error) throw new Error(error.message);
+
+      if (count !== null && count !== undefined) totalCount = count;
+
+      if (!rawAffs || rawAffs.length === 0) break;
+
+      allRawAffs.push(...rawAffs);
+      currentOffset += rawAffs.length;
+
+      if (rawAffs.length < chunkSize) break;
     }
-    if (q && q.trim()) {
-      const term = `%${q.trim()}%`;
-      queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term},encadrant.ilike.${term}`);
-    }
 
-    queryBuilder = queryBuilder.order('date_inscription', { ascending: false }).range(Number(offset), Number(offset) + Number(limit) - 1);
-
-    const { data: rawAffs, count, error } = await queryBuilder;
-    if (error) throw new Error(error.message);
-
-    let items = (rawAffs || []).map(a => {
+    let items = allRawAffs.map(a => {
       const hasVoted = (a.tel_electeur || '').includes('VOTED');
       return {
         CIN: a.cin,
@@ -695,7 +715,7 @@ export async function getAssignments({ encadrant = '', commune = '', q = '', vot
       items = items.filter(i => !i.has_voted);
     }
 
-    return { items, total: count || 0 };
+    return { items, total: totalCount || items.length };
   }
 
   let whereClauses = [];
