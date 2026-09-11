@@ -369,6 +369,31 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
       queryBuilder = queryBuilder.or(filterStr);
     }
 
+    if (status === 'assigned' || status === 'unassigned') {
+      let assignedCins = [];
+      let from = 0;
+      const step = 1000;
+      while (true) {
+        const { data } = await supabase.from('affectations_encadrants').select('cin').range(from, from + step - 1);
+        if (!data || data.length === 0) break;
+        assignedCins.push(...data.map(d => d.cin).filter(Boolean));
+        if (data.length < step) break;
+        from += step;
+      }
+
+      if (status === 'assigned') {
+        if (assignedCins.length === 0) {
+          return { voters: [], total: 0 };
+        }
+        queryBuilder = queryBuilder.in('cin', assignedCins);
+      } else if (status === 'unassigned') {
+        if (assignedCins.length > 0) {
+          const formattedIn = '(' + assignedCins.join(',') + ')';
+          queryBuilder = queryBuilder.not('cin', 'in', formattedIn);
+        }
+      }
+    }
+
     queryBuilder = queryBuilder.range(Number(offset), Number(offset) + Number(limit) - 1);
 
     const { data: rawVoters, count, error } = await queryBuilder;
@@ -423,14 +448,7 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
       });
     }
 
-    let filteredVoters = voters;
-    if (status === 'unassigned') {
-      filteredVoters = voters.filter(v => !v.affecte_encadrant);
-    } else if (status === 'assigned') {
-      filteredVoters = voters.filter(v => !!v.affecte_encadrant);
-    }
-
-    return { voters: filteredVoters, total: count || 0 };
+    return { voters, total: count || 0 };
   }
 
   let whereClauses = [];
