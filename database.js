@@ -192,18 +192,36 @@ export async function getStats() {
     
     const { data: regEncData } = await supabase.from('liste_encadrants').select('nomencadrant');
     const validEncs = (regEncData || []).map(e => e.nomencadrant).filter(n => n && !n.startsWith('__USER__:'));
-    const validSet = new Set(validEncs);
     const totalEncadrants = validEncs.length;
 
-    const { data: topEncadrantsData } = await supabase.from('affectations_encadrants').select('encadrant');
+    const validMap = new Map();
+    validEncs.forEach(nom => {
+      const trimmed = nom.trim();
+      validMap.set(trimmed.toLowerCase(), trimmed);
+    });
+
+    let topEncadrantsData = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase.from('affectations_encadrants').select('encadrant').range(from, from + step - 1);
+      if (error || !data || data.length === 0) break;
+      topEncadrantsData.push(...data);
+      if (data.length < step) break;
+      from += step;
+    }
     
     const encCounts = {};
-    if (topEncadrantsData) {
-      topEncadrantsData.forEach(row => {
-        const nom = row.encadrant;
-        if (nom && validSet.has(nom)) encCounts[nom] = (encCounts[nom] || 0) + 1;
-      });
-    }
+    topEncadrantsData.forEach(row => {
+      if (!row.encadrant) return;
+      const trimmed = row.encadrant.trim();
+      if (!trimmed) return;
+      const canonical = validMap.get(trimmed.toLowerCase()) || trimmed;
+      if (!canonical.startsWith('__USER__:')) {
+        encCounts[canonical] = (encCounts[canonical] || 0) + 1;
+      }
+    });
+
     const topEncadrants = Object.keys(encCounts)
       .map(nom => ({ nom, count: encCounts[nom] }))
       .sort((a, b) => b.count - a.count)
@@ -244,9 +262,9 @@ export async function getStats() {
   const topEncadrants = await queryLocal(`
     SELECT a.ENCADRANT as nom, COUNT(*) as count 
     FROM AFFECTATIONS_ENCADRANTS a
-    INNER JOIN LISTE_ENCADRANTS e ON a.ENCADRANT = e.NomEncadrant
-    WHERE e.NomEncadrant NOT LIKE '__USER__:%'
-    GROUP BY a.ENCADRANT 
+    LEFT JOIN LISTE_ENCADRANTS e ON LOWER(TRIM(a.ENCADRANT)) = LOWER(TRIM(e.NomEncadrant))
+    WHERE a.ENCADRANT IS NOT NULL AND a.ENCADRANT != '' AND (e.NomEncadrant IS NULL OR e.NomEncadrant NOT LIKE '__USER__:%')
+    GROUP BY LOWER(TRIM(a.ENCADRANT))
     ORDER BY count DESC 
     LIMIT 10
   `);

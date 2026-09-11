@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Search } from 'lucide-react';
 
 export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
+  const [encSearch, setEncSearch] = useState('');
   const [voters, setVoters] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -59,16 +60,43 @@ export default function PrintEncadrantSheet({ encadrants, isOpen, onClose }) {
             </div>
 
             <div className="flex items-center space-x-3">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par nom ou tél..."
+                  value={encSearch}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEncSearch(val);
+                    const filtered = encadrants.filter(enc => 
+                      (enc.nom && enc.nom.toLowerCase().includes(val.toLowerCase())) ||
+                      (enc.tel && enc.tel.includes(val))
+                    );
+                    if (filtered.length === 1) {
+                      setSelectedEncadrant(filtered[0].nom);
+                    }
+                  }}
+                  className="pl-8 pr-3 py-1.5 glass-input rounded-xl text-xs bg-slate-900 text-slate-200 placeholder-slate-500"
+                />
+              </div>
+
               <select
                 value={selectedEncadrant}
                 onChange={(e) => setSelectedEncadrant(e.target.value)}
                 className="px-3 py-2 glass-input rounded-xl text-xs bg-slate-900 text-slate-200"
               >
-                {encadrants.map((e, idx) => (
-                  <option key={idx} value={e.nom}>
-                    {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''} - ({e.count_affectations || 0} électeurs)
-                  </option>
-                ))}
+                {encadrants
+                  .filter(e => {
+                    if (!encSearch.trim()) return true;
+                    const q = encSearch.toLowerCase();
+                    return (e.nom && e.nom.toLowerCase().includes(q)) || (e.tel && e.tel.includes(q));
+                  })
+                  .map((e, idx) => (
+                    <option key={idx} value={e.nom}>
+                      {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''} - ({e.count_affectations || 0} électeurs)
+                    </option>
+                  ))}
               </select>
 
               <button

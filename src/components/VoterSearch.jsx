@@ -22,6 +22,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
   const [selectedVoter, setSelectedVoter] = useState(null);
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
+  const [encadrantFilter, setEncadrantFilter] = useState('');
   const [telEncadrant, setTelEncadrant] = useState('');
   const [telElecteur, setTelElecteur] = useState('');
   const [forceOverwrite, setForceOverwrite] = useState(false);
@@ -739,17 +740,45 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
                     </div>
                   )}
 
+                  {/* Search/Filter encadrant input */}
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Rechercher par nom ou n° téléphone..."
+                      value={encadrantFilter}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEncadrantFilter(val);
+                        const filtered = encadrants.filter(enc => 
+                          (enc.nom && enc.nom.toLowerCase().includes(val.toLowerCase())) ||
+                          (enc.tel && enc.tel.includes(val))
+                        );
+                        if (filtered.length === 1) {
+                          handleEncadrantSelect(filtered[0].nom);
+                        }
+                      }}
+                      className="w-full pl-9 pr-3 py-2 glass-input rounded-lg text-xs bg-slate-950/80 text-white placeholder-slate-400 border border-slate-700/60 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+
                   <select
                     value={selectedEncadrant}
                     onChange={(e) => handleEncadrantSelect(e.target.value)}
                     className="w-full py-3 px-4 glass-input rounded-xl text-sm bg-slate-900 text-white font-semibold"
                     required
                   >
-                    {encadrants.map((e, idx) => (
-                      <option key={idx} value={e.nom}>
-                        {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''}
-                      </option>
-                    ))}
+                    {encadrants
+                      .filter(e => {
+                        if (!encadrantFilter.trim()) return true;
+                        const q = encadrantFilter.toLowerCase();
+                        return (e.nom && e.nom.toLowerCase().includes(q)) || (e.tel && e.tel.includes(q));
+                      })
+                      .map((e, idx) => (
+                        <option key={idx} value={e.nom}>
+                          {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''}
+                        </option>
+                      ))}
                   </select>
                 </div>
 

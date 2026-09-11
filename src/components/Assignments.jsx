@@ -10,6 +10,7 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
 
   // Filters
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
+  const [encadrantSearch, setEncadrantSearch] = useState('');
   const [selectedCommune, setSelectedCommune] = useState('');
   const [query, setQuery] = useState('');
   const [voteFilter, setVoteFilter] = useState('all'); // 'all', 'voted', 'not_voted'
@@ -239,20 +240,47 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
             />
           </div>
 
-          {/* Encadrant Filter with Telephone Numbers */}
-          <div className="relative">
-            <Filter className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+          {/* Encadrant Filter with Search Input */}
+          <div className="relative space-y-1">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                value={encadrantSearch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEncadrantSearch(val);
+                  const filtered = encadrants.filter(enc => 
+                    (enc.nom && enc.nom.toLowerCase().includes(val.toLowerCase())) ||
+                    (enc.tel && enc.tel.includes(val))
+                  );
+                  if (filtered.length === 1) {
+                    setSelectedEncadrant(filtered[0].nom);
+                  } else if (val === '') {
+                    setSelectedEncadrant('');
+                  }
+                }}
+                placeholder="Encadrant (Nom/Tél)..."
+                className="w-full pl-10 pr-4 py-2.5 glass-input rounded-xl text-sm bg-slate-900 text-slate-200"
+              />
+            </div>
             <select
               value={selectedEncadrant}
               onChange={(e) => setSelectedEncadrant(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 glass-input rounded-xl text-sm bg-slate-900 text-slate-200"
+              className="w-full px-3 py-2 glass-input rounded-xl text-xs bg-slate-900 text-slate-200 font-medium"
             >
               <option value="">Tous les Encadrants</option>
-              {encadrants.map((e, idx) => (
-                <option key={idx} value={e.nom}>
-                  {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''}
-                </option>
-              ))}
+              {encadrants
+                .filter(e => {
+                  if (!encadrantSearch.trim()) return true;
+                  const q = encadrantSearch.toLowerCase();
+                  return (e.nom && e.nom.toLowerCase().includes(q)) || (e.tel && e.tel.includes(q));
+                })
+                .map((e, idx) => (
+                  <option key={idx} value={e.nom}>
+                    {e.nom} {e.tel ? `(Tél: ${e.tel})` : ''}
+                  </option>
+                ))}
             </select>
           </div>
 
