@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2, UserPlus } from 'lucide-react';
+import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2, UserPlus, CreditCard, Edit3 } from 'lucide-react';
 
 export default function VoterSearch({ session, isVisiteur, encadrants, communes, onAssignmentChange }) {
   const [query, setQuery] = useState('');
@@ -10,6 +10,12 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
   const [voters, setVoters] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Update CNI Modal states
+  const [editingCinVoter, setEditingCinVoter] = useState(null);
+  const [inputNewCin, setInputNewCin] = useState('');
+  const [submittingCin, setSubmittingCin] = useState(false);
+  const [updateCinError, setUpdateCinError] = useState(null);
   
   // Selection state for Bulk Assignment PERSISTENT ACROSS SEARCHES
   const [selectedCins, setSelectedCins] = useState([]);
@@ -123,6 +129,47 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
       setFeedbackMsg({ type: 'error', text: err.message });
     } finally {
       setAddingVoter(false);
+    }
+  };
+
+  const handleOpenUpdateCinModal = (voter) => {
+    setEditingCinVoter(voter);
+    setInputNewCin(voter.CIN && !voter.CIN.startsWith('EMPTY') ? voter.CIN : '');
+    setUpdateCinError(null);
+  };
+
+  const handleUpdateCinSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingCinVoter || !inputNewCin.trim()) return;
+
+    setSubmittingCin(true);
+    setUpdateCinError(null);
+
+    try {
+      const res = await fetch('/api/voters/update-cin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oldCin: editingCinVoter.CIN,
+          newCin: inputNewCin.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la mise à jour de la CNI');
+
+      setFeedbackMsg({
+        type: 'success',
+        text: `N° CNI mis à jour avec succès pour ${editingCinVoter.PRENOM} ${editingCinVoter.NOM} : ${data.cin} !`
+      });
+
+      setEditingCinVoter(null);
+      fetchVoters();
+      if (onAssignmentChange) onAssignmentChange();
+    } catch (err) {
+      setUpdateCinError(err.message);
+    } finally {
+      setSubmittingCin(false);
     }
   };
 
@@ -535,9 +582,28 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
                           <Square className="w-5 h-5 text-slate-600 hover:text-slate-400" />
                         )}
                       </button>
-                      <span className="font-mono font-bold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 rounded-lg text-xs">
-                        CIN: {voter.CIN}
+                      <span className={`font-mono font-bold px-2.5 py-0.5 rounded-lg text-xs border ${
+                        voter.CIN && !voter.CIN.startsWith('EMPTY') 
+                          ? 'text-sky-400 bg-sky-500/10 border-sky-500/20' 
+                          : 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                      }`}>
+                        CNI: {voter.CIN && !voter.CIN.startsWith('EMPTY') ? voter.CIN : 'Non renseigné'}
                       </span>
+
+                      {!isVisiteur && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenUpdateCinModal(voter);
+                          }}
+                          className="text-[11px] font-bold text-amber-300 hover:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2 py-0.5 rounded-lg transition flex items-center space-x-1"
+                          title="Ajouter ou modifier le numéro CNI (Carte d'Identité)"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          <span>{voter.CIN && !voter.CIN.startsWith('EMPTY') ? 'Éditer' : '+ CNI'}</span>
+                        </button>
+                      )}
                     </div>
 
                     {isAssigned && (
@@ -1033,6 +1099,71 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-semibold shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2"
                 >
                   {addingVoter ? 'Enregistrement...' : 'Ajouter à la Base Mère'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Update CNI / CIN Modal */}
+      {editingCinVoter && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card max-w-md w-full rounded-2xl border border-slate-700 bg-slate-900 p-6 space-y-5 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-amber-400" />
+                <span>Mise à jour N° CNI (Carte d'Identité)</span>
+              </h3>
+              <button onClick={() => setEditingCinVoter(null)} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 space-y-1.5 text-xs text-slate-300">
+              <p className="text-sm font-bold text-white">{editingCinVoter.PRENOM} {editingCinVoter.NOM}</p>
+              <p><span className="text-slate-400">Commune :</span> <strong className="text-amber-300">{editingCinVoter.COMMUNE}</strong></p>
+              <p><span className="text-slate-400">Date de Naissance :</span> <strong>{editingCinVoter.DATE_NAISSANCE || 'N/C'}</strong></p>
+              <p><span className="text-slate-400">CNI Actuel :</span> <span className="font-mono font-bold text-sky-400">{editingCinVoter.CIN && !editingCinVoter.CIN.startsWith('EMPTY') ? editingCinVoter.CIN : 'Non renseigné (PDF)'}</span></p>
+            </div>
+
+            <form onSubmit={handleUpdateCinSubmit} className="space-y-4">
+              {updateCinError && (
+                <div className="p-3 bg-rose-950/90 border border-rose-500 rounded-xl text-rose-300 text-xs flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                  <span className="font-semibold">{updateCinError}</span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">
+                  Saisir le N° CNI (Carte Nationale d'Identité) <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={inputNewCin}
+                  onChange={(e) => setInputNewCin(e.target.value)}
+                  placeholder="ex: JF123456"
+                  className="w-full px-4 py-3 glass-input rounded-xl text-sm font-mono uppercase bg-slate-950 text-amber-300 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingCinVoter(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-semibold"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingCin || !inputNewCin.trim()}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                >
+                  {submittingCin ? 'Enregistrement...' : 'Enregistrer le N° CNI'}
                 </button>
               </div>
             </form>

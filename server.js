@@ -28,7 +28,8 @@ import {
   getUsers,
   addUser,
   deleteUser,
-  addVoter
+  addVoter,
+  updateVoterCin
 } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -119,6 +120,17 @@ app.post('/api/voters', async (req, res) => {
   try {
     const voter = await addVoter(req.body);
     res.json({ success: true, voter });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Voter CNI / CIN
+app.post('/api/voters/update-cin', async (req, res) => {
+  try {
+    const { oldCin, newCin } = req.body;
+    const result = await updateVoterCin({ oldCin, newCin });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -570,6 +570,61 @@ export async function getVoterByCin(cin) {
   return voter;
 }
 
+export async function updateVoterCin({ oldCin, newCin }) {
+  const cleanOld = (oldCin || '').trim();
+  const cleanNew = (newCin || '').trim().toUpperCase();
+
+  if (!cleanOld) throw new Error("Ancien CNI introuvable.");
+  if (!cleanNew) throw new Error("Veuillez saisir un numéro CNI valide.");
+
+  if (cleanOld.toUpperCase() === cleanNew) {
+    return { success: true, cin: cleanNew };
+  }
+
+  if (isCloudMode) {
+    // 1. Check if newCin already exists
+    const { data: existing } = await supabase.from('bdd_mere').select('cin,nom,prenom').eq('cin', cleanNew).maybeSingle();
+    if (existing) {
+      throw new Error(`Ce numéro CNI (${cleanNew}) existe déjà pour l'électeur ${existing.nom || ''} ${existing.prenom || ''} !`);
+    }
+
+    // 2. Fetch voter record
+    const { data: voter, error: fetchErr } = await supabase.from('bdd_mere').select('*').eq('cin', cleanOld).maybeSingle();
+    if (fetchErr || !voter) {
+      throw new Error(`Électeur introuvable dans la base mère (CIN: ${cleanOld}).`);
+    }
+
+    // 3. Upsert record with new CIN
+    const newVoterRecord = { ...voter, cin: cleanNew };
+    const { error: insErr } = await supabase.from('bdd_mere').upsert(newVoterRecord);
+    if (insErr) throw new Error(insErr.message);
+
+    // 4. Delete old placeholder record
+    await supabase.from('bdd_mere').delete().eq('cin', cleanOld);
+
+    // 5. Update assignment if exists
+    const { data: aff } = await supabase.from('affectations_encadrants').select('*').eq('cin', cleanOld).maybeSingle();
+    if (aff) {
+      const newAff = { ...aff, cin: cleanNew };
+      await supabase.from('affectations_encadrants').upsert(newAff);
+      await supabase.from('affectations_encadrants').delete().eq('cin', cleanOld);
+    }
+
+    return { success: true, cin: cleanNew };
+  }
+
+  // SQLite Local mode
+  const existingLocal = await getLocal(`SELECT CIN, NOM, PRENOM FROM BDD_MERE WHERE UPPER(CIN) = UPPER(?)`, [cleanNew]);
+  if (existingLocal) {
+    throw new Error(`Ce numéro CNI (${cleanNew}) existe déjà pour l'électeur ${existingLocal.NOM || ''} ${existingLocal.PRENOM || ''} !`);
+  }
+
+  await runLocal(`UPDATE BDD_MERE SET CIN = ? WHERE CIN = ?`, [cleanNew, cleanOld]);
+  await runLocal(`UPDATE AFFECTATIONS_ENCADRANTS SET CIN = ? WHERE CIN = ?`, [cleanNew, cleanOld]);
+
+  return { success: true, cin: cleanNew };
+}
+
 export async function getEncadrants() {
   if (isCloudMode) {
     const { data: encs } = await supabase.from('liste_encadrants').select('*').order('nomencadrant', { ascending: true });
