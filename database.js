@@ -1108,6 +1108,64 @@ export async function deleteAssignmentsByEncadrant(encadrant) {
   return { success: true };
 }
 
+export async function reassignEncadrantVoters({ fromEncadrant, toEncadrant }) {
+  const cleanFrom = (fromEncadrant || '').trim();
+  const cleanTo = (toEncadrant || '').trim();
+
+  if (!cleanFrom || !cleanTo) {
+    throw new Error('L\'encadrant d\'origine et l\'encadrant de destination sont requis.');
+  }
+
+  if (cleanFrom.toLowerCase() === cleanTo.toLowerCase()) {
+    throw new Error('L\'encadrant de destination doit être différent de l\'encadrant d\'origine.');
+  }
+
+  if (isCloudMode) {
+    const { data: targetEnc } = await supabase.from('liste_encadrants').select('tel_encadrant').ilike('nomencadrant', cleanTo).maybeSingle();
+    const phoneToSave = targetEnc ? targetEnc.tel_encadrant || '' : '';
+
+    let allFromCins = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data, error } = await supabase.from('affectations_encadrants').select('cin').ilike('encadrant', cleanFrom).range(from, from + step - 1);
+      if (error || !data || data.length === 0) break;
+      allFromCins.push(...data.map(d => d.cin).filter(Boolean));
+      if (data.length < step) break;
+      from += step;
+    }
+
+    if (allFromCins.length === 0) {
+      return { success: true, count: 0, fromEncadrant: cleanFrom, toEncadrant: cleanTo };
+    }
+
+    const { error: updateErr } = await supabase
+      .from('affectations_encadrants')
+      .update({ encadrant: cleanTo, tel: phoneToSave })
+      .ilike('encadrant', cleanFrom);
+
+    if (updateErr) throw new Error(updateErr.message);
+
+    await supabase.from('liste_encadrants').upsert({ nomencadrant: cleanTo, tel_encadrant: phoneToSave }, { onConflict: 'nomencadrant' });
+
+    return { success: true, count: allFromCins.length, fromEncadrant: cleanFrom, toEncadrant: cleanTo };
+  }
+
+  const targetEnc = await getLocal(`SELECT TEL_ENCADRANT FROM LISTE_ENCADRANTS WHERE LOWER(TRIM(NomEncadrant)) = LOWER(TRIM(?))`, [cleanTo]);
+  const phoneToSave = targetEnc ? targetEnc.TEL_ENCADRANT || '' : '';
+
+  const res = await runLocal(`
+    UPDATE AFFECTATIONS_ENCADRANTS 
+    SET ENCADRANT = ?, TEL = ? 
+    WHERE LOWER(TRIM(ENCADRANT)) = LOWER(TRIM(?))
+  `, [cleanTo, phoneToSave, cleanFrom]);
+
+  await runLocal(`INSERT OR IGNORE INTO LISTE_ENCADRANTS (NomEncadrant, TEL_ENCADRANT) VALUES (?, ?)`, [cleanTo, phoneToSave]);
+
+  return { success: true, count: res.changes || 0, fromEncadrant: cleanFrom, toEncadrant: cleanTo };
+}
+
+
 export const OFFICIAL_COMMUNES = [
   "TANTAN",
   "ELOUATIA",

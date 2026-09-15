@@ -21,6 +21,7 @@ import {
   deleteAssignment,
   deleteMultipleAssignments,
   deleteAssignmentsByEncadrant,
+  reassignEncadrantVoters,
   toggleVoterVote,
   bulkToggleVoterVote,
   getCommunes,
@@ -304,6 +305,21 @@ app.delete('/api/assignments/encadrant/:encadrant', async (req, res) => {
   }
 });
 
+// Reassign All Voters from one Encadrant to another in bulk
+app.post('/api/assignments/reassign-encadrant', async (req, res) => {
+  try {
+    const { fromEncadrant, toEncadrant } = req.body;
+    if (!fromEncadrant || !toEncadrant) {
+      return res.status(400).json({ error: 'L\'encadrant d\'origine et l\'encadrant de destination sont obligatoires.' });
+    }
+    const result = await reassignEncadrantVoters({ fromEncadrant, toEncadrant });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Get List of Communes
 app.get('/api/communes', async (req, res) => {
   try {
@@ -348,8 +364,13 @@ app.post('/api/migrate', (req, res) => {
 // ----------------------------------------------------
 const distPath = path.join(process.cwd(), 'dist');
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    }
+  }));
   app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }

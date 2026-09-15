@@ -58,7 +58,7 @@ export default function EncadrantsManager({ isVisiteur, encadrants, onUpdate }) 
 
   const handleDelete = async (nomEncadrant, count) => {
     if (count > 0) {
-      alert(`Impossible de supprimer ${nomEncadrant} car ${count} électeur(s) lui sont actuellement affectés.`);
+      alert(`Impossible de supprimer ${nomEncadrant} car ${count} électeur(s) lui sont actuellement affectés. Veuillez transférer ses électeurs depuis la page Gestion des Affectations.`);
       return;
     }
     if (!confirm(`Confirmez-vous la suppression de l'encadrant "${nomEncadrant}" ?`)) return;

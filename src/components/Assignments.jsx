@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, Search, Filter, Download, Trash2, Phone, Printer, FileText, CheckCircle2, Circle, Vote } from 'lucide-react';
+import { UserCheck, Search, Filter, Download, Trash2, Phone, Printer, FileText, CheckCircle2, Circle, Vote, ArrowRightLeft, X, ShieldAlert, Repeat } from 'lucide-react';
 import PrintEncadrantSheet from './PrintEncadrantSheet';
 
 export default function Assignments({ isVisiteur, encadrants, communes, onAssignmentChange }) {
@@ -16,6 +16,14 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
   const [voteFilter, setVoteFilter] = useState('all'); // 'all', 'voted', 'not_voted'
 
   const [selectedCins, setSelectedCins] = useState([]);
+
+  // Transfer Modal state
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [fromEncadrant, setFromEncadrant] = useState('');
+  const [targetEncadrant, setTargetEncadrant] = useState('');
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferError, setTransferError] = useState('');
+  const [transferSuccess, setTransferSuccess] = useState('');
 
   useEffect(() => {
     fetchAssignments();
@@ -138,6 +146,89 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
     }
   };
 
+  const openTransferModal = () => {
+    setFromEncadrant(selectedEncadrant || '');
+    setTargetEncadrant('');
+    setTransferError('');
+    setTransferSuccess('');
+    setShowTransferModal(true);
+  };
+
+  const handleTransferSubmit = async (e) => {
+    e.preventDefault();
+    setTransferLoading(true);
+    setTransferError('');
+    setTransferSuccess('');
+
+    try {
+      // Mode 1: Selected Checkboxes
+      if (selectedCins.length > 0) {
+        if (!targetEncadrant) {
+          setTransferError('Veuillez sélectionner l\'encadrant de destination.');
+          setTransferLoading(false);
+          return;
+        }
+        const res = await fetch('/api/assignments/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cins: selectedCins,
+            encadrant: targetEncadrant,
+            overwrite: true
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setTransferSuccess(`Succès : ${selectedCins.length} électeur(s) transféré(s) vers "${targetEncadrant}".`);
+          setSelectedCins([]);
+          fetchAssignments();
+          if (onAssignmentChange) onAssignmentChange();
+          setTimeout(() => {
+            setShowTransferModal(false);
+            setTransferSuccess('');
+          }, 1500);
+        } else {
+          setTransferError(data.error || 'Erreur lors du transfert.');
+        }
+      } 
+      // Mode 2: Mass Reassignment by Source Encadrant
+      else {
+        if (!fromEncadrant || !targetEncadrant) {
+          setTransferError('Veuillez sélectionner l\'encadrant d\'origine et de destination.');
+          setTransferLoading(false);
+          return;
+        }
+        if (fromEncadrant === targetEncadrant) {
+          setTransferError('L\'encadrant de destination doit être différent de l\'encadrant d\'origine.');
+          setTransferLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/assignments/reassign-encadrant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fromEncadrant, toEncadrant: targetEncadrant })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setTransferSuccess(`Succès : ${data.count} électeur(s) transféré(s) de "${fromEncadrant}" vers "${targetEncadrant}".`);
+          fetchAssignments();
+          if (onAssignmentChange) onAssignmentChange();
+          setTimeout(() => {
+            setShowTransferModal(false);
+            setTransferSuccess('');
+          }, 1500);
+        } else {
+          setTransferError(data.error || 'Erreur lors de la réaffectation.');
+        }
+      }
+    } catch (err) {
+      setTransferError('Erreur serveur lors du transfert.');
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
   const votedCount = assignments.filter(a => a.has_voted).length;
 
   return (
@@ -161,22 +252,36 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
 
           <div className="flex flex-wrap items-center gap-3">
             
+            {/* PERMANENT TRANSFER BUTTON (HIGH VISIBILITY) */}
+            <button
+              onClick={openTransferModal}
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-sm shadow-xl shadow-sky-500/40 transition transform hover:-translate-y-0.5 border-2 border-sky-300/50 animate-pulse-subtle"
+              title="Transférer des électeurs vers un autre encadrant"
+            >
+              <ArrowRightLeft className="w-5 h-5 text-sky-100" />
+              <span>
+                {selectedCins.length > 0 
+                  ? `🔄 Transférer les ${selectedCins.length} coché(s)` 
+                  : `🔄 Transférer Électeurs`}
+              </span>
+            </button>
+
             {/* Bulk Voting Action Buttons */}
             {selectedCins.length > 0 && !isVisiteur && (
               <>
                 <button
                   onClick={() => handleBulkVote(true)}
-                  className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition animate-fade-in"
+                  className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition animate-fade-in"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Marquer Reçu ({selectedCins.length})</span>
                 </button>
                 <button
                   onClick={() => handleBulkVote(false)}
-                  className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition animate-fade-in"
+                  className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition animate-fade-in"
                 >
                   <Circle className="w-4 h-4 text-slate-400" />
-                  <span>Marquer Non Reçu</span>
+                  <span>Non Reçu</span>
                 </button>
               </>
             )}
@@ -185,7 +290,7 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
             {selectedCins.length > 0 && !isVisiteur && (
               <button
                 onClick={handleCancelBulkAssignments}
-                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition animate-fade-in"
+                className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition animate-fade-in"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Annuler affectation ({selectedCins.length})</span>
@@ -196,7 +301,7 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
             {selectedEncadrant && !isVisiteur && (
               <button
                 onClick={() => handleCancelEncadrantAssignments(selectedEncadrant)}
-                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold transition"
+                className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold transition"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Annuler attribués de {selectedEncadrant}</span>
@@ -206,7 +311,7 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
             {/* Print Sheet per Encadrant Button */}
             <button
               onClick={() => setShowPrintModal(true)}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-semibold transition"
+              className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-semibold transition"
             >
               <FileText className="w-4 h-4" />
               <span>Imprimer Fiche Par Encadrant</span>
@@ -217,7 +322,7 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
               href="/api/export/excel"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 transition"
+              className="flex items-center space-x-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/20 transition"
             >
               <Download className="w-4 h-4" />
               <span>Exporter Excel (.xlsx)</span>
@@ -313,6 +418,39 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
             </select>
           </div>
         </div>
+      </div>
+
+      {/* Fast Action Banner for Transfer */}
+      <div className="bg-gradient-to-r from-sky-900/60 via-blue-900/60 to-indigo-900/60 border-2 border-sky-500/40 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg print:hidden">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 bg-sky-500/20 text-sky-300 rounded-xl border border-sky-400/30">
+            <ArrowRightLeft className="w-5 h-5 text-sky-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">Transfert & Réaffectation des Électeurs</h3>
+            <p className="text-xs text-slate-300">
+              {selectedEncadrant 
+                ? `Transférer la totalité ou une partie des électeurs de "${selectedEncadrant}" vers un autre encadrant.`
+                : selectedCins.length > 0
+                ? `${selectedCins.length} électeur(s) sélectionné(s) prêt(s) à être transférés.`
+                : `Sélectionnez des électeurs ou effectuez un transfert global d'un encadrant à un autre.`}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={openTransferModal}
+          className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-xs shadow-lg shadow-sky-500/30 transition border border-sky-300/40 flex items-center justify-center space-x-2 flex-shrink-0"
+        >
+          <ArrowRightLeft className="w-4 h-4 text-sky-200" />
+          <span>
+            {selectedCins.length > 0 
+              ? `🔄 Transférer les ${selectedCins.length} coché(s)` 
+              : selectedEncadrant
+              ? `🔄 Transférer les électeurs de ${selectedEncadrant}`
+              : `🔄 Ouvrir le Module de Transfert`}
+          </span>
+        </button>
       </div>
 
       {/* Assignments Table & Mobile Card View */}
@@ -419,17 +557,15 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/90 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                   <tr>
-                    {!isVisiteur && (
-                      <th className="px-4 py-4 w-10 text-center">
-                        <input
-                          type="checkbox"
-                          checked={assignments.length > 0 && selectedCins.length === assignments.length}
-                          onChange={toggleSelectAll}
-                          className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
-                          title="Tout sélectionner / Tout décocher"
-                        />
-                      </th>
-                    )}
+                    <th className="px-4 py-4 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={assignments.length > 0 && selectedCins.length === assignments.length}
+                        onChange={toggleSelectAll}
+                        className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
+                        title="Tout sélectionner / Tout décocher"
+                      />
+                    </th>
                     <th className="px-6 py-4">CIN</th>
                     <th className="px-6 py-4">Électeur</th>
                     <th className="px-6 py-4 text-center">Statut Reçu</th>
@@ -446,16 +582,14 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
                     const isChecked = selectedCins.includes(item.CIN);
                     return (
                       <tr key={item.CIN} className={`transition-colors ${isChecked ? 'bg-sky-950/20' : 'hover:bg-slate-900/40'}`}>
-                        {!isVisiteur && (
-                          <td className="px-4 py-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleSelectCin(item.CIN)}
-                              className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
-                            />
-                          </td>
-                        )}
+                        <td className="px-4 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelectCin(item.CIN)}
+                            className="rounded border-slate-700 text-sky-500 w-4 h-4 cursor-pointer"
+                          />
+                        </td>
                         <td className="px-6 py-4 font-mono font-bold text-sky-400">
                           {item.CIN}
                         </td>
@@ -529,11 +663,11 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
         )}
       </div>
 
-      {/* Mobile Floating Action Bar for Bulk Voting */}
+      {/* Mobile Floating Action Bar */}
       {selectedCins.length > 0 && !isVisiteur && (
-        <div className="md:hidden fixed bottom-4 left-3 right-3 z-40 bg-slate-900/95 border-2 border-emerald-500 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-2 animate-slide-up">
+        <div className="md:hidden fixed bottom-4 left-3 right-3 z-40 bg-slate-900/95 border-2 border-sky-500 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex flex-wrap items-center justify-between gap-2 animate-slide-up">
           <div className="text-xs font-bold flex items-center space-x-1.5">
-            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-extrabold text-xs">
+            <span className="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center font-extrabold text-xs">
               {selectedCins.length}
             </span>
             <span>sélectionné(s)</span>
@@ -541,18 +675,19 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
           <div className="flex items-center space-x-2">
             <button
               type="button"
-              onClick={() => handleBulkVote(true)}
-              className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center space-x-1"
+              onClick={openTransferModal}
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-sky-500/30 flex items-center space-x-1"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Reçu 🗳️</span>
+              <ArrowRightLeft className="w-4 h-4" />
+              <span>Transférer ({selectedCins.length})</span>
             </button>
             <button
               type="button"
-              onClick={() => handleBulkVote(false)}
-              className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700"
+              onClick={() => handleBulkVote(true)}
+              className="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center space-x-1"
             >
-              <span>Non Reçu</span>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Reçu</span>
             </button>
             <button
               type="button"
@@ -562,6 +697,135 @@ export default function Assignments({ isVisiteur, encadrants, communes, onAssign
             >
               <Trash2 className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Smart Transfer Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel max-w-lg w-full rounded-2xl border border-slate-800 p-6 space-y-6 shadow-2xl">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <ArrowRightLeft className="w-5 h-5 text-sky-400" />
+                <span>
+                  {selectedCins.length > 0 
+                    ? `Transférer les ${selectedCins.length} Électeurs Cochés` 
+                    : `Transfert d'Électeurs en Masse`}
+                </span>
+              </h3>
+              <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {transferError && (
+              <div className="p-3 bg-rose-950/80 border border-rose-500 text-rose-300 rounded-xl text-xs flex items-center space-x-2">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                <span>{transferError}</span>
+              </div>
+            )}
+
+            {transferSuccess && (
+              <div className="p-3 bg-emerald-950/80 border border-emerald-500 text-emerald-300 rounded-xl text-xs flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>{transferSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleTransferSubmit} className="space-y-4">
+              
+              {/* MODE 1: Specific checked voters */}
+              {selectedCins.length > 0 ? (
+                <>
+                  <div className="p-3.5 bg-sky-950/40 border border-sky-500/30 rounded-xl text-xs text-sky-200 space-y-1">
+                    <div>Mode : <strong className="text-white font-bold">Sélection Manuelle ({selectedCins.length} électeurs cochés)</strong></div>
+                    <p className="text-slate-300">Seuls les électeurs que vous avez cochés dans le tableau seront transférés vers l'encadrant cible.</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Encadrant de Destination (Cible) :</label>
+                    <select
+                      value={targetEncadrant}
+                      onChange={(e) => setTargetEncadrant(e.target.value)}
+                      className="w-full px-4 py-3 glass-input rounded-xl text-sm bg-slate-900 text-slate-100"
+                      required
+                    >
+                      <option value="">-- Sélectionner l'encadrant cible --</option>
+                      {encadrants.map((e, idx) => (
+                        <option key={idx} value={e.nom}>
+                          {e.nom} {e.tel ? `(${e.tel})` : ''} - [{e.count_affectations || 0} affectations actuelles]
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                /* MODE 2: Mass Reassignment by Source Encadrant */
+                <>
+                  <div className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl text-xs text-slate-300 space-y-1">
+                    <div>Mode : <strong className="text-sky-300 font-bold">Réaffectation en Masse par Encadrant</strong></div>
+                    <p className="text-slate-400">Aucune case n'est cochée. Sélectionnez l'encadrant source pour transférer la totalité de ses électeurs vers l'encadrant de destination.</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Encadrant d'Origine (Source) :</label>
+                    <select
+                      value={fromEncadrant}
+                      onChange={(e) => setFromEncadrant(e.target.value)}
+                      className="w-full px-4 py-3 glass-input rounded-xl text-sm bg-slate-900 text-slate-100"
+                      required
+                    >
+                      <option value="">-- Sélectionner l'encadrant d'origine --</option>
+                      {encadrants.map((e, idx) => (
+                        <option key={idx} value={e.nom}>
+                          {e.nom} ({e.count_affectations || 0} électeurs affectés)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Encadrant de Destination (Cible) :</label>
+                    <select
+                      value={targetEncadrant}
+                      onChange={(e) => setTargetEncadrant(e.target.value)}
+                      className="w-full px-4 py-3 glass-input rounded-xl text-sm bg-slate-900 text-slate-100"
+                      required
+                    >
+                      <option value="">-- Sélectionner l'encadrant de destination --</option>
+                      {encadrants
+                        .filter(e => e.nom !== fromEncadrant)
+                        .map((e, idx) => (
+                          <option key={idx} value={e.nom}>
+                            {e.nom} {e.tel ? `(${e.tel})` : ''} - [{e.count_affectations || 0} affectations actuelles]
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="pt-4 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTransferModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-xs font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={transferLoading || !targetEncadrant || (selectedCins.length === 0 && !fromEncadrant)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-semibold shadow-lg shadow-sky-500/20 disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {transferLoading ? 'Transfert...' : 'Confirmer le Transfert'}
+                </button>
+              </div>
+
+            </form>
+
           </div>
         </div>
       )}
