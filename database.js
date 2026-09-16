@@ -424,8 +424,11 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
 
     let voters = (rawVoters || []).map(v => {
       const aff = affMap[v.cin];
-      const cleanCin = (v.cin || '').split('#')[0] === 'EMPTY' ? '' : (v.cin || '').split('#')[0];
+      const rawCin = v.cin || '';
+      const cleanCin = rawCin.split('#')[0] === 'EMPTY' ? '' : rawCin.split('#')[0];
       return {
+        id: rawCin,
+        rawCin: rawCin,
         NUM_ORDRE: v.num_ordre,
         CIN: cleanCin,
         ADRESSE: v.adresse,
@@ -448,8 +451,8 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
     if (cleanQ) {
       const upperQ = cleanQ.toUpperCase();
       voters.sort((a, b) => {
-        const aCin = (a.CIN || '').toUpperCase();
-        const bCin = (b.CIN || '').toUpperCase();
+        const aCin = (a.CIN || a.rawCin || '').toUpperCase();
+        const bCin = (b.CIN || b.rawCin || '').toUpperCase();
         if (aCin === upperQ && bCin !== upperQ) return -1;
         if (bCin === upperQ && aCin !== upperQ) return 1;
         if (aCin.startsWith(upperQ) && !bCin.startsWith(upperQ)) return -1;
@@ -522,10 +525,17 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
 
   const finalParams = [...params, ...orderParams, Number(limit), Number(offset)];
   const rawVoters = await queryLocal(sql, finalParams);
-  const voters = (rawVoters || []).map(v => ({
-    ...v,
-    COMMUNE: toArabicCommune(v.COMMUNE)
-  }));
+  const voters = (rawVoters || []).map(v => {
+    const rawCin = v.CIN || '';
+    const cleanCin = rawCin.split('#')[0] === 'EMPTY' ? '' : rawCin.split('#')[0];
+    return {
+      ...v,
+      id: rawCin,
+      rawCin: rawCin,
+      CIN: cleanCin,
+      COMMUNE: toArabicCommune(v.COMMUNE)
+    };
+  });
 
   const countSql = `
     SELECT COUNT(*) as total 

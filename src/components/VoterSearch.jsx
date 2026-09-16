@@ -183,13 +183,13 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
 
   // Toggle select all for currently visible voters without losing previous selections
   const toggleSelectAllVisible = () => {
-    const visibleCins = voters.map(v => v.CIN);
-    const allVisibleSelected = visibleCins.every(cin => selectedCins.includes(cin));
+    const visibleIds = voters.map(v => v.id || v.rawCin || v.CIN);
+    const allVisibleSelected = visibleIds.every(id => selectedCins.includes(id));
 
     if (allVisibleSelected) {
-      setSelectedCins(prev => prev.filter(cin => !visibleCins.includes(cin)));
+      setSelectedCins(prev => prev.filter(id => !visibleIds.includes(id)));
     } else {
-      setSelectedCins(prev => Array.from(new Set([...prev, ...visibleCins])));
+      setSelectedCins(prev => Array.from(new Set([...prev, ...visibleIds])));
     }
   };
 
@@ -297,7 +297,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            cin: selectedVoter.CIN,
+            cin: selectedVoter.id || selectedVoter.rawCin || selectedVoter.CIN,
             encadrant: selectedEncadrant,
             tel: telEncadrant,
             overwrite: forceOverwrite || !!selectedVoter.affecte_encadrant,
@@ -551,16 +551,17 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {voters.map((voter, idx) => {
+            const voterId = voter.id || voter.rawCin || voter.CIN;
             const isAssigned = !!voter.affecte_encadrant;
-            const isChecked = selectedCins.includes(voter.CIN);
-            const itemKey = voter.CIN && !voter.CIN.startsWith('EMPTY') 
-              ? `${voter.CIN}_${idx}` 
+            const isChecked = selectedCins.includes(voterId);
+            const itemKey = voterId 
+              ? `${voterId}_${idx}` 
               : `voter_${voter.COMMUNE}_${voter.NUM_ORDRE}_${voter.PRENOM}_${voter.NOM}_${idx}`;
 
             return (
               <div 
                 key={itemKey}
-                onClick={() => toggleSelectVoter(voter.CIN)}
+                onClick={() => toggleSelectVoter(voterId)}
                 className={`glass-card p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between cursor-pointer relative ${
                   isChecked 
                     ? 'border-sky-400 bg-sky-950/40 ring-2 ring-sky-500/40' 
@@ -576,7 +577,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleSelectVoter(voter.CIN);
+                          toggleSelectVoter(voterId);
                         }}
                         className="text-sky-400"
                       >
