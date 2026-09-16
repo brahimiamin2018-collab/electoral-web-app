@@ -63,6 +63,7 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
 
   const fetchVoters = async () => {
     setLoading(true);
+    setVoters([]);
     try {
       const params = new URLSearchParams();
       if (query) params.append('q', query);
@@ -549,13 +550,16 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {voters.map((voter) => {
+          {voters.map((voter, idx) => {
             const isAssigned = !!voter.affecte_encadrant;
             const isChecked = selectedCins.includes(voter.CIN);
+            const itemKey = voter.CIN && !voter.CIN.startsWith('EMPTY') 
+              ? `${voter.CIN}_${idx}` 
+              : `voter_${voter.COMMUNE}_${voter.NUM_ORDRE}_${voter.PRENOM}_${voter.NOM}_${idx}`;
 
             return (
               <div 
-                key={voter.CIN}
+                key={itemKey}
                 onClick={() => toggleSelectVoter(voter.CIN)}
                 className={`glass-card p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between cursor-pointer relative ${
                   isChecked 

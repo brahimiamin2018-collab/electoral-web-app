@@ -358,8 +358,18 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
       if (isExactMode) {
         queryBuilder = queryBuilder.or(`cin.ilike.${cleanQ},nom.ilike.${cleanQ},prenom.ilike.${cleanQ}`);
       } else {
-        const term = `%${cleanQ}%`;
-        queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term}`);
+        const words = cleanQ.split(/\s+/).filter(Boolean);
+        if (words.length > 1) {
+          // Multi-word AND search across cin, nom, prenom
+          const wordConditions = words.map(w => {
+            const term = `%${w}%`;
+            return `or(cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term})`;
+          }).join(',');
+          queryBuilder = queryBuilder.and(wordConditions);
+        } else {
+          const term = `%${cleanQ}%`;
+          queryBuilder = queryBuilder.or(`cin.ilike.${term},nom.ilike.${term},prenom.ilike.${term}`);
+        }
       }
     }
 
@@ -459,9 +469,12 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
       whereClauses.push(`(UPPER(b.CIN) = UPPER(?) OR UPPER(b.NOM) = UPPER(?) OR UPPER(b.PRENOM) = UPPER(?))`);
       params.push(cleanQ, cleanQ, cleanQ);
     } else {
-      const term = `%${cleanQ}%`;
-      whereClauses.push(`(b.CIN LIKE ? OR b.NOM LIKE ? OR b.PRENOM LIKE ? OR (b.PRENOM || ' ' || b.NOM) LIKE ? OR (b.NOM || ' ' || b.PRENOM) LIKE ?)`);
-      params.push(term, term, term, term, term);
+      const words = cleanQ.split(/\s+/).filter(Boolean);
+      words.forEach(w => {
+        const term = `%${w}%`;
+        whereClauses.push(`(b.CIN LIKE ? OR b.NOM LIKE ? OR b.PRENOM LIKE ? OR (b.PRENOM || ' ' || b.NOM) LIKE ? OR (b.NOM || ' ' || b.PRENOM) LIKE ?)`);
+        params.push(term, term, term, term, term);
+      });
     }
   }
 
