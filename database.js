@@ -656,7 +656,7 @@ export async function getEncadrants() {
     let from = 0;
     const step = 1000;
     while (true) {
-      const { data, error } = await supabase.from('affectations_encadrants').select('encadrant').range(from, from + step - 1);
+      const { data, error } = await supabase.from('affectations_encadrants').select('encadrant, tel').range(from, from + step - 1);
       if (error || !data || data.length === 0) break;
       allAffs.push(...data);
       if (data.length < step) break;
@@ -664,26 +664,47 @@ export async function getEncadrants() {
     }
 
     const countMap = {};
+    const telMap = {};
     allAffs.forEach(a => {
       if (a.encadrant) {
         const key = a.encadrant.trim().toLowerCase();
         countMap[key] = (countMap[key] || 0) + 1;
+        if (a.tel && a.tel.trim() && !telMap[key]) {
+          telMap[key] = a.tel.trim();
+        }
       }
     });
 
-    return (encs || [])
-      .filter(e => e.nomencadrant && !e.nomencadrant.startsWith('__USER__:'))
-      .map(e => {
+    const encMap = new Map();
+    (encs || []).forEach(e => {
+      if (e.nomencadrant && !e.nomencadrant.startsWith('__USER__:')) {
         const nom = e.nomencadrant.trim();
-        return {
+        const key = nom.toLowerCase();
+        encMap.set(key, {
           nom: nom,
-          tel: e.tel_encadrant,
-          count_affectations: countMap[nom.toLowerCase()] || 0
-        };
-      });
+          tel: e.tel_encadrant || telMap[key] || '',
+          count_affectations: countMap[key] || 0
+        });
+      }
+    });
+
+    // Also include any assigned encadrant from affectations that wasn't in liste_encadrants
+    Object.keys(countMap).forEach(key => {
+      if (!encMap.has(key)) {
+        const sample = allAffs.find(a => a.encadrant && a.encadrant.trim().toLowerCase() === key);
+        const originalNom = sample ? sample.encadrant.trim() : key;
+        encMap.set(key, {
+          nom: originalNom,
+          tel: telMap[key] || '',
+          count_affectations: countMap[key] || 0
+        });
+      }
+    });
+
+    return Array.from(encMap.values()).sort((a, b) => a.nom.localeCompare(b.nom));
   }
 
-  const sql = `
+  const registeredEncs = await queryLocal(`
     SELECT e.NomEncadrant as nom, 
            e.TEL_ENCADRANT as tel,
            COUNT(a.CIN) as count_affectations
@@ -692,8 +713,28 @@ export async function getEncadrants() {
     WHERE e.NomEncadrant NOT LIKE '__USER__:%'
     GROUP BY e.NomEncadrant
     ORDER BY e.NomEncadrant ASC
-  `;
-  return await queryLocal(sql);
+  `);
+
+  const unlistedEncs = await queryLocal(`
+    SELECT a.ENCADRANT as nom,
+           a.TEL as tel,
+           COUNT(a.CIN) as count_affectations
+    FROM AFFECTATIONS_ENCADRANTS a
+    LEFT JOIN LISTE_ENCADRANTS e ON LOWER(TRIM(a.ENCADRANT)) = LOWER(TRIM(e.NomEncadrant))
+    WHERE e.NomEncadrant IS NULL AND a.ENCADRANT IS NOT NULL AND a.ENCADRANT != ''
+    GROUP BY a.ENCADRANT
+  `);
+
+  const mergedMap = new Map();
+  (registeredEncs || []).forEach(e => mergedMap.set(e.nom.trim().toLowerCase(), e));
+  (unlistedEncs || []).forEach(e => {
+    const key = e.nom.trim().toLowerCase();
+    if (!mergedMap.has(key)) {
+      mergedMap.set(key, e);
+    }
+  });
+
+  return Array.from(mergedMap.values()).sort((a, b) => a.nom.localeCompare(b.nom));
 }
 
 export async function addEncadrant(nom, tel) {
