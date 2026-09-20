@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, Search, Filter, Download, Building2, UserCheck, Users, RefreshCw } from 'lucide-react';
+import { Printer, Search, Download, Building2, UserCheck, Users, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function PrintElOuatiaVoters({ encadrants }) {
@@ -8,7 +8,6 @@ export default function PrintElOuatiaVoters({ encadrants }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
-  const [statusFilter, setStatusFilter] = useState('assigned'); // Default to assigned voters only!
 
   useEffect(() => {
     fetchElOuatiaVoters();
@@ -37,20 +36,15 @@ export default function PrintElOuatiaVoters({ encadrants }) {
     }
   };
 
-  // Filter & Sort voters locally (Classer par encadrant + afficher affectés par défaut)
+  // Filter & Sort voters locally (Classer par encadrant + affichage strict des électeurs affectés)
   const filteredVoters = voters
     .filter(v => {
-      // Status filter (Default: assigned only)
-      if (statusFilter === 'assigned' && !v.affecte_encadrant) return false;
-      if (statusFilter === 'unassigned' && v.affecte_encadrant) return false;
+      // Seuls les électeurs affectés sont conservés
+      if (!v.affecte_encadrant) return false;
 
       // Encadrant dropdown filter
       if (selectedEncadrant) {
-        if (selectedEncadrant === '__UNASSIGNED__') {
-          if (v.affecte_encadrant) return false;
-        } else {
-          if ((v.affecte_encadrant || '').toLowerCase() !== selectedEncadrant.toLowerCase()) return false;
-        }
+        if ((v.affecte_encadrant || '').toLowerCase() !== selectedEncadrant.toLowerCase()) return false;
       }
 
       // Search query filter (CIN, Nom, Prenom, Encadrant, Bureau)
@@ -71,8 +65,8 @@ export default function PrintElOuatiaVoters({ encadrants }) {
     })
     .sort((a, b) => {
       // Classer selon l'encadrant (A -> Z)
-      const encA = (a.affecte_encadrant || 'ZZZ_Non_Affecte').toLowerCase();
-      const encB = (b.affecte_encadrant || 'ZZZ_Non_Affecte').toLowerCase();
+      const encA = (a.affecte_encadrant || '').toLowerCase();
+      const encB = (b.affecte_encadrant || '').toLowerCase();
       if (encA !== encB) {
         return encA.localeCompare(encB, 'fr');
       }
@@ -118,7 +112,7 @@ export default function PrintElOuatiaVoters({ encadrants }) {
               <span>Électeurs Affectés : <span className="text-emerald-400 font-extrabold">الوطية (El Ouatia)</span></span>
             </h2>
             <p className="text-xs text-slate-400">
-              Page classée par encadrant (seuls les électeurs affectés sont affichés par défaut)
+              Page classée par encadrant (seuls les électeurs affectés sont affichés)
             </p>
           </div>
 
@@ -170,7 +164,7 @@ export default function PrintElOuatiaVoters({ encadrants }) {
         </div>
 
         {/* Interactive Search & Filter Toolbar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           {/* Search query input */}
           <div className="relative">
             <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
@@ -192,26 +186,11 @@ export default function PrintElOuatiaVoters({ encadrants }) {
               className="w-full pl-10 pr-4 py-2.5 glass-input rounded-xl text-sm bg-slate-900 text-slate-200"
             >
               <option value="">Tous les Encadrants</option>
-              <option value="__UNASSIGNED__">-- Non Affectés Uniquement --</option>
               {(encadrants || []).map((e, idx) => (
                 <option key={idx} value={e.nom}>
                   {e.nom} {e.tel ? `(${e.tel})` : ''}
                 </option>
               ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 glass-input rounded-xl text-sm bg-slate-900 text-slate-200 font-medium"
-            >
-              <option value="assigned">Électeurs Affectés Uniquement (Classés par Encadrant)</option>
-              <option value="all">Tous les Électeurs (Affectés & Non Affectés)</option>
-              <option value="unassigned">Non Affectés Uniquement</option>
             </select>
           </div>
         </div>
