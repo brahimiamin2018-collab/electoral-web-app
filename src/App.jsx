@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import VoterSearch from './components/VoterSearch';
 import Assignments from './components/Assignments';
 import EncadrantsManager from './components/EncadrantsManager';
+import PrintElOuatiaVoters from './components/PrintElOuatiaVoters';
 import UsersManager from './components/UsersManager';
 import DataMigration from './components/DataMigration';
 import LoginModal from './components/LoginModal';
@@ -163,6 +164,12 @@ export default function App() {
             isVisiteur={isReadOnly}
             encadrants={encadrants}
             onUpdate={loadAllData}
+          />
+        )}
+
+        {activeTab === 'print_elouatia' && (
+          <PrintElOuatiaVoters
+            encadrants={encadrants}
           />
         )}
 

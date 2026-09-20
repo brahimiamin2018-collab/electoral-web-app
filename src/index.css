@@ -75,8 +75,8 @@
     display: none !important;
   }
 
-  /* 2. Hide all body children EXCEPT #printable-encadrant-sheet */
-  body > *:not(#printable-encadrant-sheet) {
+  /* 2. Hide all body children EXCEPT printable sheets */
+  body > *:not(#printable-encadrant-sheet):not(#printable-elouatia-page) {
     display: none !important;
   }
 
@@ -94,8 +94,9 @@
     print-color-adjust: exact !important;
   }
 
-  /* 4. Display ONLY #printable-encadrant-sheet starting at top 0 */
-  #printable-encadrant-sheet {
+  /* 4. Display ONLY active printable sheet starting at top 0 */
+  #printable-encadrant-sheet,
+  #printable-elouatia-page {
     display: block !important;
     position: static !important;
     width: 100% !important;
@@ -105,20 +106,24 @@
     color: #000000 !important;
   }
 
-  #printable-encadrant-sheet * {
+  #printable-encadrant-sheet *,
+  #printable-elouatia-page * {
     visibility: visible !important;
   }
 
-  #printable-encadrant-sheet thead {
+  #printable-encadrant-sheet thead,
+  #printable-elouatia-page thead {
     display: table-header-group !important;
   }
 
-  #printable-encadrant-sheet tr {
+  #printable-encadrant-sheet tr,
+  #printable-elouatia-page tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  #printable-encadrant-sheet table {
+  #printable-encadrant-sheet table,
+  #printable-elouatia-page table {
     width: 100% !important;
     border-collapse: collapse !important;
     margin-top: 6px !important;
@@ -126,14 +131,17 @@
   }
 
   #printable-encadrant-sheet th,
-  #printable-encadrant-sheet td {
+  #printable-encadrant-sheet td,
+  #printable-elouatia-page th,
+  #printable-elouatia-page td {
     padding: 4px 6px !important;
     font-size: 11px !important;
     border: 1px solid #000000 !important;
     color: #000000 !important;
   }
 
-  #printable-encadrant-sheet th {
+  #printable-encadrant-sheet th,
+  #printable-elouatia-page th {
     background-color: #ffffff !important;
     color: #000000 !important;
     font-weight: bold !important;

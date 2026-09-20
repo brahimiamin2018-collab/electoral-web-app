@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User, ShieldCheck, Printer } from 'lucide-react';
 
 export default function Header({ activeTab, setActiveTab, stats, userRole, session, onOpenLogin, onLogout }) {
   const allTabs = [
@@ -7,13 +7,14 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
     { id: 'voters', label: 'Recherche Électeurs', icon: Vote, adminOnly: false },
     { id: 'assignments', label: 'Gestion Affectations', icon: UserCheck, adminOnly: true },
     { id: 'encadrants', label: 'Encadrants', icon: Users, adminOnly: true },
+    { id: 'print_elouatia', label: 'Impression (الوطية)', icon: Printer, adminOnly: false },
     { id: 'users', label: 'Utilisateurs', icon: ShieldCheck, adminOnly: true },
     { id: 'migration', label: 'Import / Export', icon: Database, adminOnly: true },
   ];
 
   // Filter tabs by role
   const visibleTabs = allTabs.filter(tab => {
-    if (userRole === 'utilisateur') return tab.id === 'voters' || tab.id === 'encadrants' || tab.id === 'assignments';
+    if (userRole === 'utilisateur') return tab.id === 'voters' || tab.id === 'encadrants' || tab.id === 'assignments' || tab.id === 'print_elouatia';
     if (userRole === 'visiteur') return tab.id !== 'users';
     return true;
   });
