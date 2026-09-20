@@ -17,10 +17,19 @@ export default function PrintElOuatiaVoters({ encadrants }) {
   const fetchElOuatiaVoters = async () => {
     setLoading(true);
     try {
-      // Fetch all voters for commune 'الوطية' with limit 10000
-      const res = await fetch('/api/voters?commune=' + encodeURIComponent('الوطية') + '&limit=10000');
-      const data = await res.json();
-      setVoters(data.voters || []);
+      let allVoters = [];
+      let offset = 0;
+      const limit = 1000;
+      while (true) {
+        const res = await fetch(`/api/voters?commune=${encodeURIComponent('الوطية')}&limit=${limit}&offset=${offset}`);
+        const data = await res.json();
+        const batch = data.voters || [];
+        if (batch.length === 0) break;
+        allVoters.push(...batch);
+        if (batch.length < limit || allVoters.length >= (data.total || 0)) break;
+        offset += limit;
+      }
+      setVoters(allVoters);
     } catch (err) {
       console.error('Erreur chargement électeurs El Ouatia:', err);
     } finally {

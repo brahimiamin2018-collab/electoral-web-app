@@ -404,21 +404,43 @@ export async function searchVoters({ q = '', commune = '', status = 'all', exact
       }
     }
 
-    queryBuilder = queryBuilder.range(Number(offset), Number(offset) + Number(limit) - 1);
+    let rawVoters = [];
+    let count = 0;
+    const targetLimit = Number(limit);
 
-    const { data: rawVoters, count, error } = await queryBuilder;
+    if (targetLimit > 1000) {
+      let from = Number(offset);
+      const step = 1000;
+      while (rawVoters.length < targetLimit) {
+        const fetchLimit = Math.min(step, targetLimit - rawVoters.length);
+        const to = from + fetchLimit - 1;
+        const { data, count: pageCount, error } = await queryBuilder.range(from, to);
+        if (error) throw new Error(error.message);
+        if (pageCount !== null && pageCount !== undefined) count = pageCount;
+        if (!data || data.length === 0) break;
+        rawVoters.push(...data);
+        if (data.length < fetchLimit) break;
+        from += fetchLimit;
+      }
+    } else {
+      const { data, count: pageCount, error } = await queryBuilder.range(Number(offset), Number(offset) + targetLimit - 1);
+      if (error) throw new Error(error.message);
+      rawVoters = data || [];
+      count = pageCount || 0;
+    }
 
-    if (error) throw new Error(error.message);
-
-    const cins = (rawVoters || []).map(v => v.cin);
+    const cins = (rawVoters || []).map(v => v.cin).filter(Boolean);
     let affMap = {};
 
     if (cins.length > 0) {
-      const { data: affs } = await supabase.from('affectations_encadrants').select('*').in('cin', cins);
-      if (affs) {
-        affs.forEach(a => {
-          affMap[a.cin] = a;
-        });
+      for (let i = 0; i < cins.length; i += 500) {
+        const batchCins = cins.slice(i, i + 500);
+        const { data: affs } = await supabase.from('affectations_encadrants').select('*').in('cin', batchCins);
+        if (affs) {
+          affs.forEach(a => {
+            affMap[a.cin] = a;
+          });
+        }
       }
     }
 
