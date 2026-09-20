@@ -8,7 +8,7 @@ export default function PrintElOuatiaVoters({ encadrants }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEncadrant, setSelectedEncadrant] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'assigned', 'unassigned'
+  const [statusFilter, setStatusFilter] = useState('assigned'); // Default to assigned voters only!
 
   useEffect(() => {
     fetchElOuatiaVoters();
@@ -37,37 +37,50 @@ export default function PrintElOuatiaVoters({ encadrants }) {
     }
   };
 
-  // Filter voters locally
-  const filteredVoters = voters.filter(v => {
-    // Search query filter (CIN, Nom, Prenom, Encadrant, Bureau)
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchCin = (v.CIN || v.rawCin || '').toLowerCase().includes(q);
-      const matchNom = (v.NOM || '').toLowerCase().includes(q);
-      const matchPrenom = (v.PRENOM || '').toLowerCase().includes(q);
-      const matchFullName = `${v.PRENOM || ''} ${v.NOM || ''}`.toLowerCase().includes(q);
-      const matchBureau = (v.LIEU_BUREAU_VOTE || v.NOM_BUREAU_VOTE || '').toLowerCase().includes(q);
-      const matchEnc = (v.affecte_encadrant || '').toLowerCase().includes(q);
-      if (!matchCin && !matchNom && !matchPrenom && !matchFullName && !matchBureau && !matchEnc) {
-        return false;
+  // Filter & Sort voters locally (Classer par encadrant + afficher affectés par défaut)
+  const filteredVoters = voters
+    .filter(v => {
+      // Status filter (Default: assigned only)
+      if (statusFilter === 'assigned' && !v.affecte_encadrant) return false;
+      if (statusFilter === 'unassigned' && v.affecte_encadrant) return false;
+
+      // Encadrant dropdown filter
+      if (selectedEncadrant) {
+        if (selectedEncadrant === '__UNASSIGNED__') {
+          if (v.affecte_encadrant) return false;
+        } else {
+          if ((v.affecte_encadrant || '').toLowerCase() !== selectedEncadrant.toLowerCase()) return false;
+        }
       }
-    }
 
-    // Encadrant dropdown filter
-    if (selectedEncadrant) {
-      if (selectedEncadrant === '__UNASSIGNED__') {
-        if (v.affecte_encadrant) return false;
-      } else {
-        if ((v.affecte_encadrant || '').toLowerCase() !== selectedEncadrant.toLowerCase()) return false;
+      // Search query filter (CIN, Nom, Prenom, Encadrant, Bureau)
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchCin = (v.CIN || v.rawCin || '').toLowerCase().includes(q);
+        const matchNom = (v.NOM || '').toLowerCase().includes(q);
+        const matchPrenom = (v.PRENOM || '').toLowerCase().includes(q);
+        const matchFullName = `${v.PRENOM || ''} ${v.NOM || ''}`.toLowerCase().includes(q);
+        const matchBureau = (v.LIEU_BUREAU_VOTE || v.NOM_BUREAU_VOTE || '').toLowerCase().includes(q);
+        const matchEnc = (v.affecte_encadrant || '').toLowerCase().includes(q);
+        if (!matchCin && !matchNom && !matchPrenom && !matchFullName && !matchBureau && !matchEnc) {
+          return false;
+        }
       }
-    }
 
-    // Status filter
-    if (statusFilter === 'assigned' && !v.affecte_encadrant) return false;
-    if (statusFilter === 'unassigned' && v.affecte_encadrant) return false;
-
-    return true;
-  });
+      return true;
+    })
+    .sort((a, b) => {
+      // Classer selon l'encadrant (A -> Z)
+      const encA = (a.affecte_encadrant || 'ZZZ_Non_Affecte').toLowerCase();
+      const encB = (b.affecte_encadrant || 'ZZZ_Non_Affecte').toLowerCase();
+      if (encA !== encB) {
+        return encA.localeCompare(encB, 'fr');
+      }
+      // Deuxième tri par Nom & Prénom
+      const nameA = `${a.NOM || ''} ${a.PRENOM || ''}`.toLowerCase();
+      const nameB = `${b.NOM || ''} ${b.PRENOM || ''}`.toLowerCase();
+      return nameA.localeCompare(nameB, 'fr');
+    });
 
   const totalAssigned = voters.filter(v => v.affecte_encadrant).length;
   const totalUnassigned = voters.length - totalAssigned;
@@ -79,18 +92,18 @@ export default function PrintElOuatiaVoters({ encadrants }) {
   const handleExportExcel = () => {
     const exportData = filteredVoters.map((v, idx) => ({
       'N°': idx + 1,
+      'Encadrant Responsable': v.affecte_encadrant || 'Non affecté',
+      'Téléphone Encadrant': v.affecte_tel || '',
       'CIN': v.CIN || v.rawCin || '',
       'Nom & Prénom': `${v.PRENOM || ''} ${v.NOM || ''}`.trim(),
       'Commune': 'الوطية',
-      'NBV (Lieu de Vote)': v.LIEU_BUREAU_VOTE || v.NOM_BUREAU_VOTE || 'N/C',
-      'Encadrant Responsable': v.affecte_encadrant || 'Non affecté',
-      'Téléphone Encadrant': v.affecte_tel || ''
+      'NBV (Lieu de Vote)': v.LIEU_BUREAU_VOTE || v.NOM_BUREAU_VOTE || 'N/C'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Electeurs_El_Ouatia');
-    XLSX.writeFile(workbook, `Electeurs_Commune_El_Ouatia_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Electeurs_Affectes_El_Ouatia');
+    XLSX.writeFile(workbook, `Electeurs_Affectes_Commune_El_Ouatia_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
@@ -102,10 +115,10 @@ export default function PrintElOuatiaVoters({ encadrants }) {
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Building2 className="w-6 h-6 text-sky-400" />
-              <span>Électeurs de la Commune : <span className="text-emerald-400 font-extrabold">الوطية (El Ouatia)</span></span>
+              <span>Électeurs Affectés : <span className="text-emerald-400 font-extrabold">الوطية (El Ouatia)</span></span>
             </h2>
             <p className="text-xs text-slate-400">
-              Page d'affichage et d'impression complète des électeurs avec bureau de vote et encadrant
+              Page classée par encadrant (seuls les électeurs affectés sont affichés par défaut)
             </p>
           </div>
 
@@ -147,11 +160,11 @@ export default function PrintElOuatiaVoters({ encadrants }) {
             <span className="text-lg font-extrabold text-sky-400">{voters.length.toLocaleString()}</span>
           </div>
           <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800/80 flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-semibold">Électeurs Affectés:</span>
+            <span className="text-xs text-slate-400 font-semibold">Électeurs Affectés (Affichés):</span>
             <span className="text-lg font-extrabold text-emerald-400">{totalAssigned.toLocaleString()}</span>
           </div>
           <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800/80 flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-semibold">Non Affectés:</span>
+            <span className="text-xs text-slate-400 font-semibold">Non Affectés (Masqués):</span>
             <span className="text-lg font-extrabold text-amber-400">{totalUnassigned.toLocaleString()}</span>
           </div>
         </div>
@@ -194,10 +207,10 @@ export default function PrintElOuatiaVoters({ encadrants }) {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 glass-input rounded-xl text-sm bg-slate-900 text-slate-200"
+              className="w-full pl-10 pr-4 py-2.5 glass-input rounded-xl text-sm bg-slate-900 text-slate-200 font-medium"
             >
-              <option value="all font-medium">Tous les Statuts d'Affectation</option>
-              <option value="assigned">Affectés Uniquement</option>
+              <option value="assigned">Électeurs Affectés Uniquement (Classés par Encadrant)</option>
+              <option value="all">Tous les Électeurs (Affectés & Non Affectés)</option>
               <option value="unassigned">Non Affectés Uniquement</option>
             </select>
           </div>
@@ -207,16 +220,16 @@ export default function PrintElOuatiaVoters({ encadrants }) {
       {/* On-Screen Table Preview (Screen mode) */}
       <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4 print:hidden">
         <div className="flex items-center justify-between text-xs text-slate-400 pb-2 border-b border-slate-800">
-          <span>Affichage de <strong>{filteredVoters.length}</strong> / {voters.length} électeurs de <strong>الوطية</strong></span>
+          <span>Affichage de <strong>{filteredVoters.length}</strong> électeurs affectés (Commune <strong>الوطية</strong>, classés par encadrant)</span>
         </div>
 
         {loading ? (
           <div className="py-12 text-center text-slate-400 text-sm">
-            Chargement de la liste des électeurs de la commune الوطية...
+            Chargement et classement des électeurs de la commune الوطية...
           </div>
         ) : filteredVoters.length === 0 ? (
           <div className="py-12 text-center text-slate-500 text-sm">
-            Aucun électeur ne correspond aux critères de recherche actuels.
+            Aucun électeur affecté ne correspond aux critères de recherche actuels.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -224,21 +237,17 @@ export default function PrintElOuatiaVoters({ encadrants }) {
               <thead>
                 <tr className="bg-slate-900/90 text-slate-300 font-bold uppercase text-[11px] tracking-wider border-b border-slate-800">
                   <th className="p-3 text-center w-12">N°</th>
+                  <th className="p-3 w-52">Nom de l'Encadrant</th>
                   <th className="p-3 w-28">CIN</th>
                   <th className="p-3 w-56">Nom & Prénom</th>
                   <th className="p-3 w-32">Commune</th>
                   <th className="p-3 w-48">NBV (Bureau / Lieu)</th>
-                  <th className="p-3 w-48">Nom de l'Encadrant</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {filteredVoters.map((v, idx) => (
                   <tr key={v.CIN || v.rawCin || idx} className="hover:bg-slate-800/40 transition">
                     <td className="p-3 text-center font-mono text-slate-400 font-semibold">{idx + 1}</td>
-                    <td className="p-3 font-mono font-bold text-sky-400 whitespace-nowrap">{v.CIN || v.rawCin}</td>
-                    <td className="p-3 font-bold text-slate-100">{v.PRENOM} {v.NOM}</td>
-                    <td className="p-3 text-emerald-400 font-semibold">الوطية</td>
-                    <td className="p-3 text-slate-300">{v.LIEU_BUREAU_VOTE || v.NOM_BUREAU_VOTE || 'N/C'}</td>
                     <td className="p-3">
                       {v.affecte_encadrant ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
@@ -249,6 +258,10 @@ export default function PrintElOuatiaVoters({ encadrants }) {
                         <span className="text-slate-500 italic">Non affecté</span>
                       )}
                     </td>
+                    <td className="p-3 font-mono font-bold text-sky-400 whitespace-nowrap">{v.CIN || v.rawCin}</td>
+                    <td className="p-3 font-bold text-slate-100">{v.PRENOM} {v.NOM}</td>
+                    <td className="p-3 text-emerald-400 font-semibold">الوطية</td>
+                    <td className="p-3 text-slate-300">{v.LIEU_BUREAU_VOTE || v.NOM_BUREAU_VOTE || 'N/C'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -267,11 +280,11 @@ export default function PrintElOuatiaVoters({ encadrants }) {
               Royaume du Maroc • Province de Tan-Tan • Commune de El Ouatia (الوطية)
             </div>
             <h1 className="text-xl font-extrabold uppercase mt-1 text-black">
-              Liste des Électeurs - Commune de El Ouatia (الوطية)
+              Liste des Électeurs Affectés (Classés par Encadrant) - Commune de El Ouatia (الوطية)
             </h1>
             <div className="flex justify-between items-center text-[10px] font-semibold mt-2 text-black px-2">
               <span>Date d'Impression : {new Date().toLocaleDateString('fr-FR')}</span>
-              <span>Nombre d'Électeurs Affichés : <strong>{filteredVoters.length}</strong></span>
+              <span>Nombre d'Électeurs Affectés Affichés : <strong>{filteredVoters.length}</strong></span>
               <span>Total Commune : <strong>{voters.length}</strong></span>
             </div>
           </div>
@@ -282,24 +295,24 @@ export default function PrintElOuatiaVoters({ encadrants }) {
               <thead>
                 <tr className="bg-white text-black font-bold uppercase text-[10px] tracking-wider border-b-2 border-black">
                   <th className="p-1.5 text-center w-8 border border-black">N°</th>
+                  <th className="p-1.5 border border-black w-44">Nom de l'Encadrant</th>
                   <th className="p-1.5 border border-black w-24">CIN</th>
                   <th className="p-1.5 border border-black w-44">Nom & Prénom</th>
                   <th className="p-1.5 border border-black w-24">Commune</th>
                   <th className="p-1.5 border border-black w-48">NBV (Bureau / Lieu)</th>
-                  <th className="p-1.5 border border-black w-44">Nom de l'Encadrant</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black border border-black">
                 {filteredVoters.map((v, idx) => (
                   <tr key={v.CIN || v.rawCin || idx} className="bg-white border-b border-black">
                     <td className="p-1.5 text-center font-mono font-bold text-black border border-black">{idx + 1}</td>
+                    <td className="p-1.5 font-bold text-black border border-black">
+                      {v.affecte_encadrant || 'Non affecté'}
+                    </td>
                     <td className="p-1.5 font-mono font-bold text-black border border-black whitespace-nowrap">{v.CIN || v.rawCin}</td>
                     <td className="p-1.5 font-bold text-black border border-black">{v.PRENOM} {v.NOM}</td>
                     <td className="p-1.5 font-semibold text-black border border-black">الوطية</td>
                     <td className="p-1.5 text-black border border-black">{v.LIEU_BUREAU_VOTE || v.NOM_BUREAU_VOTE || 'N/C'}</td>
-                    <td className="p-1.5 font-bold text-black border border-black">
-                      {v.affecte_encadrant || 'Non affecté'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
