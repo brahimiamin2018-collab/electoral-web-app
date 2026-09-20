@@ -166,6 +166,7 @@ export default function UsersManager() {
           {users.map((u) => {
             const isAdmin = u.role === 'admin';
             const isVisiteur = u.role === 'visiteur';
+            const isElOuatia = u.role === 'elouatia';
             return (
               <div key={u.username} className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4 flex flex-col justify-between hover:border-slate-700 transition">
                 <div className="space-y-3">
@@ -175,18 +176,22 @@ export default function UsersManager() {
                         ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
                         : isVisiteur 
                         ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' 
+                        : isElOuatia
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
                     }`}>
-                      {isAdmin ? <Shield className="w-5 h-5" /> : isVisiteur ? <Eye className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                      {isAdmin ? <Shield className="w-5 h-5" /> : isVisiteur || isElOuatia ? <Eye className="w-5 h-5" /> : <User className="w-5 h-5" />}
                     </span>
                     <span className={`px-3 py-1 font-bold text-xs rounded-full border ${
                       isAdmin 
                         ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
                         : isVisiteur 
                         ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' 
+                        : isElOuatia
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                         : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
                     }`}>
-                      {isAdmin ? 'Administrateur' : isVisiteur ? 'Visiteur' : 'Utilisateur'}
+                      {isAdmin ? 'Administrateur' : isVisiteur ? 'Visiteur' : isElOuatia ? 'El Ouatia' : 'Utilisateur'}
                     </span>
                   </div>
 
@@ -197,7 +202,7 @@ export default function UsersManager() {
 
                   <div className="text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-1">
                     <div>Rôle: <strong className="text-slate-200">
-                      {isAdmin ? 'Accès complet (Admin)' : isVisiteur ? 'Consultation seule (Visiteur)' : 'Recherche & Affectation (Opérateur)'}
+                      {isAdmin ? 'Accès complet (Admin)' : isVisiteur ? 'Consultation seule (Visiteur)' : isElOuatia ? 'Consultation El Ouatia (Lecture Seule)' : 'Recherche & Affectation (Opérateur)'}
                     </strong></div>
                     {u.created_at && (
                       <div className="text-[11px] text-slate-500">Créé le : {u.created_at.substring(0, 10)}</div>
@@ -294,6 +299,7 @@ export default function UsersManager() {
                 >
                   <option value="utilisateur">👤 Utilisateur (Recherche & Affectation uniquement)</option>
                   <option value="visiteur">👁️ Visiteur (Consultation seule, sans modification)</option>
+                  <option value="elouatia">🏰 Consultation El Ouatia (الوطية) (Accès restreint El Ouatia)</option>
                   <option value="admin">👑 Administrateur (Accès complet à toutes les fonctions)</option>
                 </select>
               </div>

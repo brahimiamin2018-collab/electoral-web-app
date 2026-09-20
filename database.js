@@ -1335,6 +1335,9 @@ export async function loginUser(username, password) {
   if ((cleanUser === 'salama' || cleanUser === 'admin' || cleanUser === 'administrateur') && (cleanPass === 'electorale@1475963' || cleanPass === 'admin123' || cleanPass === 'admin')) {
     return { username: 'salama', role: 'admin', nom_complet: 'Administrateur Principal (salama)' };
   }
+  if ((cleanUser === 'elouatia' || cleanUser === 'ouatia') && (cleanPass === 'elouatia2026' || cleanPass === 'elouatia123' || cleanPass === 'elouatia')) {
+    return { username: 'elouatia', role: 'elouatia', nom_complet: 'Consultation Électeurs El Ouatia (الوطية)' };
+  }
 
   // Check in-memory persistent list
   const localList = getPersistentUsersList();

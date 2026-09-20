@@ -46,6 +46,12 @@ export default function LoginModal({ isOpen, onClose, onLogin, isLocked = false 
       return;
     }
 
+    if ((cleanUser === 'elouatia' || cleanUser === 'ouatia') && (cleanPass === 'elouatia2026' || cleanPass === 'elouatia123' || cleanPass === 'elouatia')) {
+      onLogin({ role: 'elouatia', username: 'elouatia', nom_complet: 'Consultation Électeurs El Ouatia (الوطية)' });
+      if (onClose) onClose();
+      return;
+    }
+
     // Fallback check local hybrid storage
     try {
       const stored = localStorage.getItem('electoral_persistent_users');

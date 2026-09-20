@@ -14,6 +14,7 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
 
   // Filter tabs by role
   const visibleTabs = allTabs.filter(tab => {
+    if (userRole === 'elouatia') return tab.id === 'print_elouatia';
     if (userRole === 'utilisateur') return tab.id === 'voters' || tab.id === 'encadrants' || tab.id === 'assignments' || tab.id === 'print_elouatia';
     if (userRole === 'visiteur') return tab.id !== 'users';
     return true;
@@ -38,9 +39,11 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
                       : userRole === 'visiteur'
                       ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                      : userRole === 'elouatia'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                   }`}>
-                    {userRole === 'admin' ? 'Admin' : userRole === 'visiteur' ? 'Visiteur' : 'Utilisateur'}
+                    {userRole === 'admin' ? 'Admin' : userRole === 'visiteur' ? 'Visiteur' : userRole === 'elouatia' ? 'El Ouatia (Lecture Seule)' : 'Utilisateur'}
                   </span>
                 </p>
               </div>

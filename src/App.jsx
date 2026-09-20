@@ -36,9 +36,11 @@ export default function App() {
     }
   }, [session]);
 
-  // Enforce restricted tab for "utilisateur" and "visiteur"
+  // Enforce restricted tab for "elouatia", "utilisateur" and "visiteur"
   useEffect(() => {
-    if (userRole === 'utilisateur') {
+    if (userRole === 'elouatia') {
+      setActiveTab('print_elouatia');
+    } else if (userRole === 'utilisateur') {
       setActiveTab('voters');
     } else if (userRole === 'visiteur' && activeTab === 'users') {
       setActiveTab('dashboard');
@@ -75,7 +77,9 @@ export default function App() {
   const handleLoginSuccess = (newSession) => {
     setSession(newSession);
     localStorage.setItem('electoral_session', JSON.stringify(newSession));
-    if (newSession.role === 'utilisateur') {
+    if (newSession.role === 'elouatia') {
+      setActiveTab('print_elouatia');
+    } else if (newSession.role === 'utilisateur') {
       setActiveTab('voters');
     } else {
       setActiveTab('dashboard');
@@ -100,7 +104,7 @@ export default function App() {
     );
   }
 
-  const isReadOnly = userRole === 'visiteur';
+  const isReadOnly = userRole === 'visiteur' || userRole === 'elouatia';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white">
