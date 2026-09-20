@@ -274,19 +274,10 @@ export default function PrintElOuatiaVoters({ encadrants }) {
       {createPortal(
         <div id="printable-elouatia-page" className="hidden print:block bg-white text-black p-0">
           
-          {/* Print Header */}
-          <div className="border-b-2 border-black pb-3 mb-4 text-center font-sans">
-            <div className="text-[11px] font-bold uppercase tracking-widest text-black">
-              Royaume du Maroc • Province de Tan-Tan • Commune de El Ouatia (الوطية)
-            </div>
-            <h1 className="text-xl font-extrabold uppercase mt-1 text-black">
-              Liste des Électeurs Affectés (Classés par Encadrant) - Commune de El Ouatia (الوطية)
-            </h1>
-            <div className="flex justify-between items-center text-[10px] font-semibold mt-2 text-black px-2">
-              <span>Date d'Impression : {new Date().toLocaleDateString('fr-FR')}</span>
-              <span>Nombre d'Électeurs Affectés Affichés : <strong>{filteredVoters.length}</strong></span>
-              <span>Total Commune : <strong>{voters.length}</strong></span>
-            </div>
+          {/* Simple Top Bar: Only display affected voters count */}
+          <div className="pb-2 mb-2 border-b-2 border-black flex justify-between items-center text-xs font-bold text-black font-sans">
+            <span>Commune de El Ouatia (الوطية) - Électeurs Affectés</span>
+            <span>Nombre d'Électeurs Affectés : <strong className="text-sm">{filteredVoters.length}</strong></span>
           </div>
 
           {/* Print Table */}
@@ -318,14 +309,6 @@ export default function PrintElOuatiaVoters({ encadrants }) {
               </tbody>
             </table>
           )}
-
-          {/* Print Footer / Signature Block */}
-          <div className="mt-6 pt-2 border-t border-black flex justify-between items-end text-[11px] text-black">
-            <div>
-              Signature et Cachet du Bureau :
-              <div className="h-16 w-56 border border-dashed border-black rounded mt-1"></div>
-            </div>
-          </div>
 
         </div>,
         document.body
