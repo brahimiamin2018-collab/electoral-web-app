@@ -37,7 +37,16 @@ export default function NfcScannerModal({ isOpen, onClose, encadrants = [], onAs
       if (supported) {
         startNfcScan();
       } else {
-        setNfcStatusText('Web NFC indisponible sur ce navigateur (utilisez la recherche CIN rapide ci-dessous).');
+        const isHttps = window.isSecureContext;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        if (!isHttps) {
+          setNfcStatusText('⚠️ Connexion HTTPS requise : Le scan Web NFC exige une URL sécurisée (https://...). En HTTP ordinaire, le navigateur bloque l\'accès au matériel NFC.');
+        } else if (isIOS) {
+          setNfcStatusText('ℹ️ Limitation iOS (iPhone) : Apple réserve la puce NFC aux applications natives App Store et la bloque dans Safari. Utilisez la recherche CIN rapide ci-dessous.');
+        } else {
+          setNfcStatusText('ℹ️ Pour utiliser le scan NFC natif, ouvrez le site sur un smartphone Android avec Google Chrome et activez le NFC dans les paramètres du téléphone.');
+        }
       }
     } else {
       stopNfcScan();
