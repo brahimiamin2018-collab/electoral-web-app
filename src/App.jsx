@@ -8,6 +8,7 @@ import PrintElOuatiaVoters from './components/PrintElOuatiaVoters';
 import UsersManager from './components/UsersManager';
 import DataMigration from './components/DataMigration';
 import LoginModal from './components/LoginModal';
+import NfcScannerModal from './components/NfcScannerModal';
 
 export default function App() {
   // Session Authentication Gate (Must be logged in with username + password)
@@ -25,6 +26,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('voters');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showNfcModal, setShowNfcModal] = useState(false);
 
   const [stats, setStats] = useState(null);
   const [encadrants, setEncadrants] = useState([]);
@@ -118,6 +120,7 @@ export default function App() {
         session={session}
         onOpenLogin={() => setShowLoginModal(true)}
         onLogout={handleLogout}
+        onOpenNfc={() => setShowNfcModal(true)}
       />
 
       {/* Main Content View Container */}
@@ -151,6 +154,7 @@ export default function App() {
             encadrants={encadrants}
             communes={communes}
             onAssignmentChange={loadAllData}
+            onOpenNfc={() => setShowNfcModal(true)}
           />
         )}
 
@@ -196,6 +200,14 @@ export default function App() {
         isLocked={false}
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLoginSuccess}
+      />
+
+      {/* NFC Smartphone Scanner Modal */}
+      <NfcScannerModal
+        isOpen={showNfcModal}
+        onClose={() => setShowNfcModal(false)}
+        encadrants={encadrants}
+        onAssignmentChange={loadAllData}
       />
 
       {/* Footer */}

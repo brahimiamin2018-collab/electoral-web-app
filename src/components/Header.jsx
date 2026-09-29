@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User, ShieldCheck, Printer } from 'lucide-react';
+import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User, ShieldCheck, Printer, Wifi } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, stats, userRole, session, onOpenLogin, onLogout }) {
+export default function Header({ activeTab, setActiveTab, stats, userRole, session, onOpenLogin, onLogout, onOpenNfc }) {
   const allTabs = [
     { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, adminOnly: true },
     { id: 'voters', label: 'Recherche Électeurs', icon: Vote, adminOnly: false },
@@ -71,6 +71,18 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
                   );
                 })}
               </nav>
+
+              {/* NFC Scan Quick Trigger Button */}
+              {onOpenNfc && (
+                <button
+                  onClick={onOpenNfc}
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl border border-sky-500/40 bg-sky-950/40 hover:bg-sky-900/60 text-xs font-bold text-sky-300 transition shadow-lg shadow-sky-500/10"
+                  title="Scanner Carte Nationale (NFC / Smartphone)"
+                >
+                  <Wifi className="w-4 h-4 text-sky-400 animate-pulse" />
+                  <span>Scan NFC</span>
+                </button>
+              )}
 
               {/* Logout / Lock App Button */}
               {onLogout && (

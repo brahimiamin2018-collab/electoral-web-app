@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2, UserPlus, CreditCard, Edit3 } from 'lucide-react';
+import { Search, UserCheck, CheckCircle2, AlertCircle, Phone, MapPin, Calendar, Building, X, Filter, CheckSquare, Square, Users, ShieldAlert, UserX, AlertTriangle, Trash2, UserPlus, CreditCard, Edit3, Wifi } from 'lucide-react';
 
-export default function VoterSearch({ session, isVisiteur, encadrants, communes, onAssignmentChange }) {
+export default function VoterSearch({ session, isVisiteur, encadrants, communes, onAssignmentChange, onOpenNfc }) {
   const [query, setQuery] = useState('');
   const [exactSearch, setExactSearch] = useState(false);
   const [selectedCommune, setSelectedCommune] = useState('');
@@ -400,6 +400,17 @@ export default function VoterSearch({ session, isVisiteur, encadrants, communes,
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {onOpenNfc && (
+              <button
+                onClick={onOpenNfc}
+                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition shadow-lg shadow-sky-600/20"
+                title="Vérification rapide par scan NFC CNIE"
+              >
+                <Wifi className="w-4 h-4 animate-pulse text-sky-200" />
+                <span>Scan NFC Smartphone</span>
+              </button>
+            )}
+
             {!isVisiteur && (
               <button
                 onClick={() => { setAddVoterError(null); setShowAddVoterModal(true); }}
