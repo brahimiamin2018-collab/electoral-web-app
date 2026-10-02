@@ -1,6 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function MaintenanceGate() {
+  useEffect(() => {
+    document.title = '404: NOT_FOUND';
+    
+    // Remove or blank out all favicon links to hide images in browser tab bar
+    const links = document.querySelectorAll("link[rel*='icon']");
+    links.forEach(l => l.remove());
+
+    const blankIcon = document.createElement('link');
+    blankIcon.type = 'image/x-icon';
+    blankIcon.rel = 'shortcut icon';
+    blankIcon.href = 'data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    document.getElementsByTagName('head')[0].appendChild(blankIcon);
+  }, []);
   return (
     <div className="min-h-screen bg-white text-[#111111] flex flex-col items-center justify-center p-6 selection:bg-black selection:text-white font-sans antialiased">
       
