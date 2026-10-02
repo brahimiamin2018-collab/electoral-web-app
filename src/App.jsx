@@ -12,10 +12,13 @@ import NfcScannerModal from './components/NfcScannerModal';
 import MaintenanceGate from './components/MaintenanceGate';
 
 export default function App() {
-  // Master Stealth App Lock (Must be unlocked with PIN 170694)
-  const [isAppUnlocked, setIsAppUnlocked] = useState(() => {
-    return localStorage.getItem('electoral_app_unlocked') === 'true';
-  });
+  // Check if running locally on this PC (localhost) or on public web
+  const isLocalHost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.') ||
+    window.location.search.includes('access=local')
+  );
 
   // Session Authentication Gate (Must be logged in with username + password)
   const [session, setSession] = useState(() => {
@@ -39,10 +42,10 @@ export default function App() {
   const [communes, setCommunes] = useState([]);
 
   useEffect(() => {
-    if (session && isAppUnlocked) {
+    if (session && isLocalHost) {
       loadAllData();
     }
-  }, [session, isAppUnlocked]);
+  }, [session, isLocalHost]);
 
   // Enforce restricted tab for "elouatia", "utilisateur" and "visiteur"
   useEffect(() => {
@@ -99,14 +102,9 @@ export default function App() {
     localStorage.removeItem('electoral_session');
   };
 
-  const handleLockApp = () => {
-    localStorage.removeItem('electoral_app_unlocked');
-    setIsAppUnlocked(false);
-  };
-
-  // 1. IF APP IS MASKED/LOCKED: Show Neutral Maintenance Screen
-  if (!isAppUnlocked) {
-    return <MaintenanceGate onUnlock={() => setIsAppUnlocked(true)} />;
+  // 1. IF ACCESSED FROM PUBLIC WEB / NON-LOCALHOST: Show Neutral Maintenance Screen without ANY access or PIN code
+  if (!isLocalHost) {
+    return <MaintenanceGate />;
   }
 
   // 2. IF NOT AUTHENTICATED: Show Full-Screen Lock Gate

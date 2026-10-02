@@ -1,25 +1,7 @@
-import React, { useState } from 'react';
-import { ShieldAlert, Lock, ArrowRight, KeyRound, Wrench, CheckCircle2 } from 'lucide-react';
+import React from 'react';
+import { Wrench } from 'lucide-react';
 
-const MASTER_PIN = '170694';
-
-export default function MaintenanceGate({ onUnlock }) {
-  const [pinInput, setPinInput] = useState('');
-  const [error, setError] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
-
-  const handlePinSubmit = (e) => {
-    e.preventDefault();
-    if (pinInput.trim() === MASTER_PIN) {
-      localStorage.setItem('electoral_app_unlocked', 'true');
-      setError(false);
-      onUnlock();
-    } else {
-      setError(true);
-      setPinInput('');
-    }
-  };
-
+export default function MaintenanceGate() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 selection:bg-sky-500 selection:text-white relative">
       
@@ -33,70 +15,20 @@ export default function MaintenanceGate({ onUnlock }) {
           <Wrench className="w-8 h-8 text-sky-400 animate-pulse" />
         </div>
 
-        {/* Maintenance Message */}
+        {/* Neutral Maintenance Message - NO ACCESS, NO BUTTONS, NO INPUTS */}
         <div className="space-y-2">
           <h2 className="text-2xl font-extrabold text-white tracking-tight">
             Site en Maintenance
           </h2>
           <p className="text-sm text-slate-400 leading-relaxed">
-            La plateforme est actuellement en cours de mise à jour technique. Veuillez repasser plus tard.
+            La plateforme est actuellement fermée pour maintenance technique. Veuillez repasser ultérieurement.
           </p>
         </div>
 
         {/* Status Badge */}
         <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-          <span>Maintenance système globale</span>
-        </div>
-
-        {/* Discrete Admin Unlock Link */}
-        <div className="pt-4 border-t border-slate-800/80">
-          {!showPinModal ? (
-            <button
-              onClick={() => setShowPinModal(true)}
-              className="text-xs text-slate-600 hover:text-slate-400 font-medium flex items-center justify-center space-x-1 mx-auto transition"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Accès réservé</span>
-            </button>
-          ) : (
-            <form onSubmit={handlePinSubmit} className="space-y-3 animate-fade-in pt-2">
-              <label className="block text-xs font-semibold text-slate-300">
-                Entrez le Code PIN Secret d'Accès :
-              </label>
-              
-              <div className="flex space-x-2">
-                <div className="relative flex-1">
-                  <KeyRound className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
-                  <input
-                    type="password"
-                    value={pinInput}
-                    onChange={(e) => { setPinInput(e.target.value); setError(false); }}
-                    placeholder="Code PIN (170694)"
-                    maxLength={10}
-                    autoFocus
-                    className="w-full pl-10 pr-4 py-2.5 glass-input rounded-xl text-sm font-mono tracking-widest text-center"
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  disabled={!pinInput.trim()}
-                  className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center space-x-1.5 transition"
-                >
-                  <span>Déverrouiller</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {error && (
-                <p className="text-xs text-rose-400 font-bold flex items-center justify-center space-x-1 pt-1">
-                  <ShieldAlert className="w-4 h-4" />
-                  <span>Code PIN incorrect. Accès refusé.</span>
-                </p>
-              )}
-            </form>
-          )}
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+          <span>Accès désactivé</span>
         </div>
 
       </div>
