@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User, ShieldCheck, Printer, Wifi } from 'lucide-react';
+import { LayoutDashboard, UserCheck, Users, Database, Shield, Vote, LogIn, LogOut, User, ShieldCheck, Printer, Wifi, Lock } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, stats, userRole, session, onOpenLogin, onLogout, onOpenNfc }) {
+export default function Header({ activeTab, setActiveTab, stats, userRole, session, onOpenLogin, onLogout, onOpenNfc, onLockApp }) {
   const allTabs = [
     { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard, adminOnly: true },
     { id: 'voters', label: 'Recherche Électeurs', icon: Vote, adminOnly: false },
@@ -81,6 +81,18 @@ export default function Header({ activeTab, setActiveTab, stats, userRole, sessi
                 >
                   <Wifi className="w-4 h-4 text-sky-400 animate-pulse" />
                   <span>Scan NFC</span>
+                </button>
+              )}
+
+              {/* Stealth Mode Re-Lock Button */}
+              {onLockApp && (
+                <button
+                  onClick={onLockApp}
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl border border-amber-500/40 bg-amber-950/30 hover:bg-amber-900/50 text-xs font-semibold text-amber-300 transition"
+                  title="Masquer l'application (Activer le mode maintenance)"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Masquer l'app</span>
                 </button>
               )}
 

@@ -9,8 +9,14 @@ import UsersManager from './components/UsersManager';
 import DataMigration from './components/DataMigration';
 import LoginModal from './components/LoginModal';
 import NfcScannerModal from './components/NfcScannerModal';
+import MaintenanceGate from './components/MaintenanceGate';
 
 export default function App() {
+  // Master Stealth App Lock (Must be unlocked with PIN 170694)
+  const [isAppUnlocked, setIsAppUnlocked] = useState(() => {
+    return localStorage.getItem('electoral_app_unlocked') === 'true';
+  });
+
   // Session Authentication Gate (Must be logged in with username + password)
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem('electoral_session');
@@ -33,10 +39,10 @@ export default function App() {
   const [communes, setCommunes] = useState([]);
 
   useEffect(() => {
-    if (session) {
+    if (session && isAppUnlocked) {
       loadAllData();
     }
-  }, [session]);
+  }, [session, isAppUnlocked]);
 
   // Enforce restricted tab for "elouatia", "utilisateur" and "visiteur"
   useEffect(() => {
@@ -93,7 +99,17 @@ export default function App() {
     localStorage.removeItem('electoral_session');
   };
 
-  // IF NOT AUTHENTICATED: Show Full-Screen Lock Gate
+  const handleLockApp = () => {
+    localStorage.removeItem('electoral_app_unlocked');
+    setIsAppUnlocked(false);
+  };
+
+  // 1. IF APP IS MASKED/LOCKED: Show Neutral Maintenance Screen
+  if (!isAppUnlocked) {
+    return <MaintenanceGate onUnlock={() => setIsAppUnlocked(true)} />;
+  }
+
+  // 2. IF NOT AUTHENTICATED: Show Full-Screen Lock Gate
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
@@ -121,6 +137,7 @@ export default function App() {
         onOpenLogin={() => setShowLoginModal(true)}
         onLogout={handleLogout}
         onOpenNfc={() => setShowNfcModal(true)}
+        onLockApp={handleLockApp}
       />
 
       {/* Main Content View Container */}
