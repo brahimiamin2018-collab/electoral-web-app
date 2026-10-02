@@ -8,11 +8,11 @@ export default function MaintenanceGate() {
     const links = document.querySelectorAll("link[rel*='icon']");
     links.forEach(l => l.remove());
 
-    const globeIcon = document.createElement('link');
-    globeIcon.type = 'image/svg+xml';
-    globeIcon.rel = 'shortcut icon';
-    globeIcon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23757575' stroke-width='1.75'><circle cx='12' cy='12' r='9.5'/><path d='M2.5 12h19'/><path d='M4 7.5h16'/><path d='M4 16.5h16'/><path d='M12 2.5C9 6 8 9.5 8 12s1 6 4 9.5'/><path d='M12 2.5C15 6 16 9.5 16 12s-1 6-4 9.5'/></svg>";
-    document.getElementsByTagName('head')[0].appendChild(globeIcon);
+    const vercelIcon = document.createElement('link');
+    vercelIcon.type = 'image/svg+xml';
+    vercelIcon.rel = 'shortcut icon';
+    vercelIcon.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1155 1000'><path fill='%23000000' d='M577.5 0L1155 1000H0L577.5 0z'/></svg>";
+    document.getElementsByTagName('head')[0].appendChild(vercelIcon);
   }, []);
   return (
     <div className="min-h-screen bg-white text-[#111111] flex flex-col items-center justify-center p-6 selection:bg-black selection:text-white font-sans antialiased">
